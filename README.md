@@ -62,9 +62,9 @@
 ### Build
 
 ```powershell
-# Clone your fork
-git clone https://github.com/tcflying/hermes-agent.git
-cd hermmes-agent
+# Clone the repo
+git clone https://github.com/tcflying/hermes-agent-windows-rust.git
+cd hermes-agent-windows-rust
 
 # Build Rust backend
 cargo build --release

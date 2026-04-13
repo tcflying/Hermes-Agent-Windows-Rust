@@ -62,9 +62,9 @@
 ### 构建
 
 ```powershell
-# 克隆你的 fork
-git clone https://github.com/tcflying/hermes-agent.git
-cd hermes-agent
+# 克隆仓库
+git clone https://github.com/tcflying/hermes-agent-windows-rust.git
+cd hermes-agent-windows-rust
 
 # 构建 Rust 后端
 cargo build --release
