@@ -6,6 +6,10 @@
 
 ---
 
+**[🇨🇳 中文说明](./README_zh.md)**
+
+---
+
 ## Features
 
 ### Core Agent
