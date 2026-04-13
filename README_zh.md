@@ -116,7 +116,7 @@ hermes-rs/
 │   ├── cli/            # HermesCLI — 斜杠命令、皮肤引擎、安装向导
 │   ├── config/         # YAML 配置加载器，多提供商 schema
 │   ├── gateway/        # Axum HTTP 服务器、SSE 流式、Session 路由
-│   │   └── platforms/ # 存根适配器：Telegram, Discord, Slack, WhatsApp 等
+│   │   └── platforms/ # Telegram, Discord, Slack, WhatsApp, Signal 适配器
 │   ├── session/        # SQLite + FTS5 Session 数据库，轨迹保存
 │   ├── tool-registry/  # 中心工具注册表（存根，待集成）
 │   ├── ui/             # React + TypeScript 前端
@@ -219,7 +219,7 @@ cargo clippy --fix
 | HTTP Gateway | ✅ 正常运行 |
 | CLI + 斜杠命令 | ✅ 正常运行 |
 | 流式中断 | ✅ 正常运行 |
-| 平台适配器 | 🔧 仅存根 |
+| 平台适配器 | ✅ Telegram, Discord, Slack, WhatsApp, Signal |
 | Skill 自我进化 | ✅ 自动创建、合并重复、清理过期 |
 | ACP 适配器（VS Code） | 🔜 未开始 |
 

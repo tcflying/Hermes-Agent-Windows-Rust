@@ -116,7 +116,7 @@ hermes-rs/
 │   ├── cli/            # HermesCLI — slash commands, skin engine, setup wizard
 │   ├── config/         # YAML config loader, multi-provider schema
 │   ├── gateway/        # Axum HTTP server, SSE streaming, session routing
-│   │   └── platforms/ # Stub adapters: Telegram, Discord, Slack, WhatsApp, etc.
+│   │   └── platforms/ # Telegram, Discord, Slack, WhatsApp, Signal adapters
 │   ├── session/        # SQLite + FTS5 session DB, trajectory saving
 │   ├── tool-registry/  # Central tool registry (stub, pending integration)
 │   ├── ui/             # React + TypeScript frontend
@@ -218,7 +218,7 @@ cargo clippy --fix
 | HTTP Gateway | ✅ Working |
 | CLI + slash commands | ✅ Working |
 | Streaming interrupt | ✅ Working |
-| Platform adapters | 🔧 Stub only |
+| Platform adapters | ✅ Telegram, Discord, Slack, WhatsApp, Signal |
 | Skill self-evolution | ✅ Auto-create, merge duplicates, prune stale |
 | ACP adapter (VS Code) | 🔜 Not started |
 

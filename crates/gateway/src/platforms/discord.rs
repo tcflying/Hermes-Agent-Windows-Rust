@@ -85,12 +85,13 @@ impl PlatformAdapter for DiscordAdapter {
         }
     }
 
-    async fn send_document(&self, chat_id: &str, file_url: &str, caption: Option<&str>) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn send_document(&self, chat_id: &str, _file_url: &str, caption: Option<&str>) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        let url = format!("https://discord.com/api/v10/channels/{}/messages", chat_id);
         let body = serde_json::json!({
-            "content": format!("{}{}", caption.unwrap_or(""), if caption.is_some() { "\n" } else { "" } )
+            "content": caption.unwrap_or("Document")
         });
         let resp = self.client
-            .post(format!("https://discord.com/api/v10/channels/{}/messages", chat_id))
+            .post(&url)
             .header("Authorization", format!("Bot {}", self.bot_token))
             .json(&body)
             .send()

@@ -1,6 +1,8 @@
 pub mod discord;
+pub mod signal;
 pub mod slack;
 pub mod telegram;
+pub mod whatsapp;
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
