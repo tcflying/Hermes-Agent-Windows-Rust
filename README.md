@@ -58,13 +58,21 @@
 
 ## Quick Start
 
-### Prerequisites
+### Option A — Download Pre-built (Recommended)
+1. Download the latest release: **[v0.1.0](https://github.com/tcflying/hermes-agent-windows-rust/releases/tag/v0.1.0)** → `release-package.zip`
+2. Extract to any folder
+3. Double-click `start.bat`
+4. Open http://localhost:1420 → Settings → enter your API key → Save
+5. Start chatting!
+
+### Option B — Build from Source
+
+**Prerequisites:**
 - Rust 1.93+
 - Node.js 18+
 - Windows 10/11
 
-### Build
-
+**Build:**
 ```powershell
 # Clone the repo
 git clone https://github.com/tcflying/hermes-agent-windows-rust.git
@@ -77,22 +85,10 @@ cargo build --release
 cd crates/ui && npm install && cd ../..
 ```
 
-### Run
-
-**Option A — Scripts (simplest):**
+**Run:**
 ```powershell
-# Double-click or run in terminal:
 start.bat    # Starts backend (port 3848) + frontend (port 1420)
 stop.bat     # Stops all services
-```
-
-**Option B — Manual:**
-```powershell
-# Backend
-./target/release/hermes.exe gateway start
-
-# Frontend (separate terminal)
-cd crates/ui && npm run dev
 ```
 
 - Frontend: http://localhost:1420

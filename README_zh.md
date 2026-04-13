@@ -58,13 +58,21 @@
 
 ## 快速开始
 
-### 环境要求
+### 方式一 — 下载即用（推荐）
+1. 下载最新版：**[v0.1.0](https://github.com/tcflying/hermes-agent-windows-rust/releases/tag/v0.1.0)** → `release-package.zip`
+2. 解压到任意文件夹
+3. 双击 `start.bat`
+4. 打开 http://localhost:1420 → Settings → 填入 API Key → Save
+5. 开始聊天！
+
+### 方式二 — 从源码构建
+
+**环境要求：**
 - Rust 1.93+
 - Node.js 18+
 - Windows 10/11
 
-### 构建
-
+**构建：**
 ```powershell
 # 克隆仓库
 git clone https://github.com/tcflying/hermes-agent-windows-rust.git
@@ -77,22 +85,10 @@ cargo build --release
 cd crates/ui && npm install && cd ../..
 ```
 
-### 运行
-
-**方式一 — 脚本（最简单）：**
+**运行：**
 ```powershell
-# 双击或在终端运行：
 start.bat    # 启动后端（3848 端口）+ 前端（1420 端口）
 stop.bat     # 停止所有服务
-```
-
-**方式二 — 手动：**
-```powershell
-# 后端
-./target/release/hermes.exe gateway start
-
-# 前端（另一个终端）
-cd crates/ui && npm run dev
 ```
 
 - 前端：http://localhost:1420
