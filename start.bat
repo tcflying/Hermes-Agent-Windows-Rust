@@ -7,25 +7,28 @@ echo Done.
 
 echo.
 echo =========================================
-echo    Hermes Agent - Starting All Services
+echo    Hermes Agent v0.5.0 - Starting
 echo =========================================
 echo.
 
-echo [1/2] Starting backend (port 3848)...
-start "Hermes-Backend" cmd /k "cd /d G:\opencode-project\hermes-rs\target\release && hermes.exe gateway start"
+echo Starting gateway on port 3848...
+start "Hermes-Gateway" cmd /k "%~dp0hermes.exe gateway start"
 
-echo [2/2] Starting frontend (port 1420)...
-start "Hermes-Frontend" cmd /k "cd /d G:\opencode-project\hermes-rs\crates\ui && npm run dev"
+echo.
+echo Waiting for gateway to start...
+timeout /t 3 /nobreak >nul
 
 echo.
 echo =========================================
 echo    STARTUP COMPLETE!
-echo    Backend:  http://localhost:3848
-echo    Frontend: http://localhost:1420
+echo    Dashboard: http://localhost:3848
 echo =========================================
 echo.
-echo Two windows will open - each shows a service log.
-echo Close either window to stop that service.
+echo The gateway serves both the API and the
+echo web dashboard. Open http://localhost:3848
+echo in your browser.
+echo.
+echo Close the gateway window to stop.
 echo.
 
 pause

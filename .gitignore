@@ -12,3 +12,15 @@ node_modules/
 # Environment
 .env
 *.log
+
+# Release packaging
+release-package/
+release-package.zip
+
+# Test artifacts
+test-stderr.txt
+test-stdout.txt
+
+# Misc
+playwright_amazon.py
+crates/dist/

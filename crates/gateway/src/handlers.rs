@@ -21,7 +21,12 @@ use std::path::PathBuf;
 use std::fs;
 use std::time::Instant;
 use tower_http::cors::{CorsLayer, Any};
-use crate::logging::{LogBuffer, log_agent};
+use crate::env_handlers::env_routes;
+use crate::config_ext_handlers::config_ext_routes;
+use crate::cron_handlers::cron_routes;
+use crate::status_handlers::status_routes;
+use crate::skills_toolset_handlers::create_skills_toolset_router;
+use crate::logging::LogBuffer;
 use hermes_config::providers;
 
 const DEFAULT_API_URL: &str = "https://api.minimaxi.com/v1";
@@ -95,13 +100,18 @@ pub fn create_router(state: AppState) -> Router {
         .route("/api/logs", get(get_logs))
         .route("/api/models/list", get(list_models))
         .route("/api/models/switch", post(switch_model))
+        .merge(env_routes())
+        .merge(config_ext_routes())
+        .merge(cron_routes())
+        .merge(status_routes())
+        .merge(create_skills_toolset_router())
         .layer(cors)
         .with_state(state)
 }
 
 pub async fn start_server(port: u16) -> Result<()> {
     print!("\x1b[33m╔══════════════════════════════════════╗\x1b[0m\n");
-    print!("\x1b[33m║     Hermes Agent Gateway v0.1.0      ║\x1b[0m\n");
+    print!("\x1b[33m║     Hermes Agent Gateway v0.5.0      ║\x1b[0m\n");
     print!("\x1b[33m╚══════════════════════════════════════╝\x1b[0m\n");
     print!("\x1b[36m  Listening on http://0.0.0.0:{}\x1b[0m\n", port);
     print!("\x1b[36m  Endpoints: /health /api/chat /api/chat/stream\x1b[0m\n");
@@ -156,6 +166,16 @@ pub async fn start_server(port: u16) -> Result<()> {
     };
 
     let app = create_router(state);
+
+    let exe_dir = std::env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(|p| p.to_path_buf()))
+        .unwrap_or_else(|| std::path::PathBuf::from("."));
+    let dist_dir = exe_dir.join("dist");
+    let static_service = tower_http::services::ServeDir::new(&dist_dir)
+        .fallback(tower_http::services::ServeFile::new(dist_dir.join("index.html")));
+    let app = app
+        .fallback_service(static_service);
 
     let addr = format!("0.0.0.0:{}", port);
     let listener = tokio::net::TcpListener::bind(&addr).await?;
