@@ -1,4 +1,4 @@
-# Hermes-Agent-Windows-Rust
+# Hermes-Agent-Windows-Rust [🇺🇸 English](./README.md)
 
 **面向 Windows 的高性能 AI Agent 桌面应用，基于 Rust + React 构建。流式工具调用、多提供商 LLM 支持、19 个内置工具、9 页 Web UI。**
 
