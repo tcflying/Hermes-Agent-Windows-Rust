@@ -24,3 +24,5 @@ test-stdout.txt
 # Misc
 playwright_amazon.py
 crates/dist/
+
+.oni

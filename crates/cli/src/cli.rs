@@ -13,7 +13,7 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     Chat {
-        #[arg(long, default_value = "anthropic/claude-4")]
+        #[arg(long, default_value = "MiniMax-M2.7-highspeed")]
         model: String,
         #[arg(long)]
         session: Option<String>,

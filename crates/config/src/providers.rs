@@ -89,7 +89,7 @@ pub fn all_providers() -> Vec<ProviderDef> {
             id: "anthropic".into(),
             name: "Anthropic".into(),
             base_url: "https://api.anthropic.com".into(),
-            api_key_env: "ANTHROPIC_API_KEY".into(),
+            api_key_env: "ANTHROPIC_API_KEY".into(),    
             models: vec![
                 ModelDef {
                     id: "claude-sonnet-4-20250514".into(),
@@ -271,6 +271,20 @@ pub fn all_providers() -> Vec<ProviderDef> {
                     supports_streaming: true,
                 },
             ],
+        },
+        ProviderDef {
+            id: "vllm".into(),
+            name: "vLLM".into(),
+            base_url: "http://192.168.134.7:9191".into(),
+            api_key_env: "VLLM_API_KEY".into(),
+            models: vec![ModelDef {
+                id: "Qwen/Qwen3.5-35B-A3B-GPTQ-Int4".into(),
+                name: "Qwen 3.5 35B A3B GPTQ Int4".into(),
+                aliases: vec!["qwen3.5-35b".into()],
+                context_length: 32768,
+                supports_tools: true,
+                supports_streaming: true,
+            }],
         },
     ]
 }
