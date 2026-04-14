@@ -396,6 +396,7 @@ mod tests {
             updated_at: "2025-01-01T00:00:00Z".to_string(),
             source: "user".to_string(),
             enabled: true,
+            category: "general".to_string(),
             usage_count: 3,
             last_used_at: Some("2025-01-02T00:00:00Z".to_string()),
         };

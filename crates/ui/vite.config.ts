@@ -1,23 +1,20 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-import tailwindcss from "@tailwindcss/vite";
-import path from "path";
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
-    },
-  },
-  build: {
-    outDir: "../dist",
-    emptyOutDir: true,
-  },
+  plugins: [react()],
+  clearScreen: false,
   server: {
     port: 1420,
-    proxy: {
-      "/api": "http://127.0.0.1:3848",
+    strictPort: true,
+    watch: {
+      ignored: ["**/src-tauri/**"],
     },
+  },
+  envPrefix: ["VITE_", "TAURI_"],
+  build: {
+    target: process.env.TAURI_PLATFORM === "windows" ? "chrome105" : "safari13",
+    minify: !process.env.TAURI_DEBUG ? "esbuild" : false,
+    sourcemap: !!process.env.TAURI_DEBUG,
   },
 });

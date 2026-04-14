@@ -111,7 +111,7 @@ pub fn create_router(state: AppState) -> Router {
 
 pub async fn start_server(port: u16) -> Result<()> {
     print!("\x1b[33m╔══════════════════════════════════════╗\x1b[0m\n");
-    print!("\x1b[33m║     Hermes Agent Gateway v0.5.0      ║\x1b[0m\n");
+    print!("\x1b[33m║     Hermes Agent Gateway v0.6.0      ║\x1b[0m\n");
     print!("\x1b[33m╚══════════════════════════════════════╝\x1b[0m\n");
     print!("\x1b[36m  Listening on http://0.0.0.0:{}\x1b[0m\n", port);
     print!("\x1b[36m  Endpoints: /health /api/chat /api/chat/stream\x1b[0m\n");
