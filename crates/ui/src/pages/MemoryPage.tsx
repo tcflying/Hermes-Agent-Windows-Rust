@@ -44,7 +44,7 @@ function MemoryFileTree({ path, onSelect }: { path: string; onSelect: (path: str
           <span className="tree-name">{entry.name}</span>
         </div>
       ))}
-      {entries.length === 0 && <div className="tree-empty">No memory files</div>}
+      {entries.length === 0 && <div className="tree-empty">No memory files found. Start a conversation to generate memory data.</div>}
     </div>
   );
 }
@@ -55,7 +55,7 @@ export function MemoryPage() {
   const [isDirty, setIsDirty] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
 
-  const memoryRoot = ".";
+  const memoryRoot = "~/.hermes/memory";
 
   const handleSelect = async (path: string) => {
     if (isDirty && selectedPath) {
@@ -103,6 +103,9 @@ export function MemoryPage() {
           </div>
         )}
       </div>
+      <div style={{ padding: "8px 24px", fontSize: 12, color: "var(--text-secondary)", borderBottom: "1px solid var(--border)", background: "var(--bg-secondary)" }}>
+        Root: {memoryRoot}
+      </div>
       <div className="memory-layout">
         <aside className="memory-sidebar">
           <MemoryFileTree path={memoryRoot} onSelect={handleSelect} />
@@ -120,7 +123,7 @@ export function MemoryPage() {
               <Brain size={48} />
               <h2>Memory Browser</h2>
               <p>Browse and edit persistent memory files</p>
-              <p className="placeholder-note">Select a file from the sidebar</p>
+              <p className="placeholder-note">Memory files are stored in ~/.hermes/memory. Select a file from the sidebar to view or edit.</p>
             </div>
           )}
         </main>

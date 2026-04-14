@@ -1,4 +1,4 @@
-import { Key, Palette, Globe, CheckCircle2, XCircle, Loader2, Zap, Radio } from "lucide-react";
+import { Palette, Globe, CheckCircle2, XCircle, Loader2, Zap, Radio } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import {
   getConfig,
@@ -22,9 +22,7 @@ const THEMES = [
 
 export function SettingsPage() {
   const [activeTab, setActiveTab] = useState("providers");
-  const [apiKey, setApiKey] = useState("");
   const [selectedTheme, setSelectedTheme] = useState("official-dark");
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
 
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [providersData, setProvidersData] = useState<ProvidersResponse | null>(null);
@@ -42,12 +40,14 @@ export function SettingsPage() {
     slack: { bot_token: string; enabled: boolean };
     whatsapp: { bridge_url: string; api_token: string; enabled: boolean };
     signal: { http_url: string; account: string; enabled: boolean };
+    feishu: { app_id: string; app_secret: string; verification_token: string; enabled: boolean };
   }>({
     telegram: { bot_token: "", enabled: false },
     discord: { bot_token: "", enabled: false },
     slack: { bot_token: "", enabled: false },
     whatsapp: { bridge_url: "", api_token: "", enabled: false },
     signal: { http_url: "", account: "", enabled: false },
+    feishu: { app_id: "", app_secret: "", verification_token: "", enabled: false },
   });
   const [platformSaveStatus, setPlatformSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
 
@@ -65,12 +65,15 @@ export function SettingsPage() {
   useEffect(() => {
     getConfig().then(cfg => {
       setConfig(cfg);
-      setApiKey(cfg.api_key || "");
       setManualModel(cfg.model || "");
       setManualApiUrl(cfg.api_url || "");
       setManualApiKey(cfg.api_key || "");
       if (cfg.platforms) {
-        setPlatforms(cfg.platforms);
+        setPlatforms(prev => ({
+          ...prev,
+          ...cfg.platforms,
+          feishu: cfg.platforms.feishu || prev.feishu,
+        }));
       }
     }).catch(() => {});
   }, []);
@@ -84,18 +87,6 @@ export function SettingsPage() {
     localStorage.setItem("hermes-theme", themeId);
     document.documentElement.setAttribute("data-theme", themeId);
     updateConfig({ skin: themeId }).catch(() => {});
-  };
-
-  const handleSaveApiKey = async () => {
-    setSaveStatus("saving");
-    try {
-      await updateConfig({ api_key: apiKey });
-      setSaveStatus("saved");
-      setTimeout(() => setSaveStatus("idle"), 2000);
-    } catch {
-      setSaveStatus("error");
-      setTimeout(() => setSaveStatus("idle"), 3000);
-    }
   };
 
   const handleModelSwitch = async (modelId: string) => {
@@ -149,6 +140,10 @@ export function SettingsPage() {
         signal_http_url: platforms.signal.http_url,
         signal_account: platforms.signal.account,
         signal_enabled: platforms.signal.enabled,
+        feishu_app_id: platforms.feishu.app_id,
+        feishu_app_secret: platforms.feishu.app_secret,
+        feishu_verification_token: platforms.feishu.verification_token,
+        feishu_enabled: platforms.feishu.enabled,
       } as any);
       showToast("Platform configuration saved");
       setPlatformSaveStatus("saved");
@@ -175,7 +170,7 @@ export function SettingsPage() {
 
       {config && (
         <div className="current-model-banner">
-          <Zap size={18} className="text-blue-400" />
+          <Zap size={18} style={{ color: "#60a5fa" }} />
           <div className="current-model-info">
             <span className="current-model-label">Active Model</span>
             <span className="current-model-name">{config.model}</span>
@@ -201,13 +196,6 @@ export function SettingsPage() {
           >
             <Palette size={18} />
             <span>Appearance</span>
-          </button>
-          <button
-            className={`settings-nav-item ${activeTab === "api" ? "active" : ""}`}
-            onClick={() => setActiveTab("api")}
-          >
-            <Key size={18} />
-            <span>API Keys</span>
           </button>
           <button
             className={`settings-nav-item ${activeTab === "manual" ? "active" : ""}`}
@@ -313,31 +301,6 @@ export function SettingsPage() {
             </div>
           )}
 
-          {activeTab === "api" && (
-            <div className="settings-section">
-              <h2>API Keys</h2>
-              <p className="settings-description">Manage your API keys for LLM providers</p>
-              <div className="api-key-form">
-                <label>
-                  <span>MiniMax API Key</span>
-                  <input
-                    type="password"
-                    value={apiKey}
-                    onChange={e => setApiKey(e.target.value)}
-                    placeholder="sk-cp-c0SQS3..."
-                  />
-                </label>
-                <button
-                  className={`save-btn ${saveStatus}`}
-                  onClick={handleSaveApiKey}
-                  disabled={saveStatus === "saving"}
-                >
-                  {saveStatus === "saving" ? "Saving..." : saveStatus === "saved" ? "✓ Saved" : saveStatus === "error" ? "Error" : "Save"}
-                </button>
-              </div>
-            </div>
-          )}
-
           {activeTab === "manual" && (
             <div className="settings-section">
               <h2>Manual Configuration</h2>
@@ -384,8 +347,13 @@ export function SettingsPage() {
           {activeTab === "platforms" && (
             <div className="settings-section">
               <h2>Messaging Platforms</h2>
-              <p className="settings-description">Connect Hermes to Telegram, Discord, Slack, WhatsApp, or Signal</p>
-              <div className="platform-list">
+              <p className="settings-description">Connect Hermes to Telegram, Discord, Slack, WhatsApp, Signal, or Feishu (Lark)</p>
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
+                gap: 16,
+                marginTop: 16,
+              }}>
                 <div className="platform-card">
                   <div className="platform-card-header">
                     <span className="platform-name">Telegram</span>
@@ -438,6 +406,18 @@ export function SettingsPage() {
                   <label><span>HTTP URL</span><input type="text" value={platforms.signal.http_url} onChange={e => setPlatforms(p => ({...p, signal: {...p.signal, http_url: e.target.value}}))} placeholder="http://127.0.0.1:8080" /></label>
                   <label><span>Account (Phone)</span><input type="text" value={platforms.signal.account} onChange={e => setPlatforms(p => ({...p, signal: {...p.signal, account: e.target.value}}))} placeholder="+15551234567" /></label>
                 </div>
+                <div className="platform-card">
+                  <div className="platform-card-header">
+                    <span className="platform-name">Feishu (Lark)</span>
+                    <label className="toggle-switch">
+                      <input type="checkbox" checked={platforms.feishu.enabled} onChange={e => setPlatforms(p => ({...p, feishu: {...p.feishu, enabled: e.target.checked}}))} />
+                      <span className="toggle-slider"></span>
+                    </label>
+                  </div>
+                  <label><span>App ID</span><input type="text" value={platforms.feishu.app_id} onChange={e => setPlatforms(p => ({...p, feishu: {...p.feishu, app_id: e.target.value}}))} placeholder="cli_xxxxxxxx" /></label>
+                  <label><span>App Secret</span><input type="password" value={platforms.feishu.app_secret} onChange={e => setPlatforms(p => ({...p, feishu: {...p.feishu, app_secret: e.target.value}}))} placeholder="your-app-secret" /></label>
+                  <label><span>Verification Token</span><input type="password" value={platforms.feishu.verification_token} onChange={e => setPlatforms(p => ({...p, feishu: {...p.feishu, verification_token: e.target.value}}))} placeholder="event-verification-token" /></label>
+                </div>
               </div>
               <button
                 className={`save-btn ${platformSaveStatus}`}
@@ -488,8 +468,8 @@ export function SettingsPage() {
           gap: 12px;
           padding: 12px 20px;
           margin: 0 0 20px 0;
-          background: #1e293b;
-          border: 1px solid #334155;
+          background: var(--bg-tertiary);
+          border: 1px solid var(--border);
           border-radius: 10px;
         }
         .current-model-info {
@@ -499,19 +479,19 @@ export function SettingsPage() {
         }
         .current-model-label {
           font-size: 11px;
-          color: #94a3b8;
+          color: var(--text-secondary);
           text-transform: uppercase;
           letter-spacing: 0.5px;
         }
         .current-model-name {
           font-size: 15px;
           font-weight: 600;
-          color: #e2e8f0;
+          color: var(--text-primary);
         }
         .current-model-url {
           margin-left: auto;
           font-size: 12px;
-          color: #64748b;
+          color: var(--text-secondary);
           font-family: monospace;
         }
 
@@ -522,18 +502,18 @@ export function SettingsPage() {
           margin-top: 16px;
         }
         .provider-card {
-          background: #1e293b;
-          border: 1px solid #334155;
+          background: var(--bg-secondary);
+          border: 1px solid var(--border);
           border-radius: 10px;
           padding: 16px;
           transition: border-color 0.2s, box-shadow 0.2s;
         }
         .provider-card:hover {
-          border-color: #475569;
+          border-color: var(--text-secondary);
         }
         .provider-card-active {
-          border-color: #3b82f6;
-          box-shadow: 0 0 0 1px #3b82f6, 0 0 20px rgba(59, 130, 246, 0.15);
+          border-color: var(--accent);
+          box-shadow: 0 0 0 1px var(--accent), 0 0 20px rgba(201, 162, 39, 0.15);
         }
         .provider-card-header {
           display: flex;
@@ -549,7 +529,7 @@ export function SettingsPage() {
         .provider-card-title .provider-name {
           font-size: 15px;
           font-weight: 600;
-          color: #e2e8f0;
+          color: var(--text-primary);
         }
         .credential-ok {
           color: #22c55e;
@@ -561,7 +541,7 @@ export function SettingsPage() {
         }
         .provider-card-url {
           font-size: 12px;
-          color: #64748b;
+          color: var(--text-secondary);
           font-family: monospace;
         }
         .provider-card-body {
@@ -571,17 +551,17 @@ export function SettingsPage() {
         }
         .model-select {
           flex: 1;
-          background: #0f172a;
-          border: 1px solid #334155;
+          background: var(--bg-primary);
+          border: 1px solid var(--border);
           border-radius: 6px;
-          color: #e2e8f0;
+          color: var(--text-primary);
           padding: 8px 12px;
           font-size: 13px;
           outline: none;
           cursor: pointer;
         }
         .model-select:focus {
-          border-color: #3b82f6;
+          border-color: var(--accent);
         }
         .model-select:disabled {
           opacity: 0.6;
@@ -590,8 +570,8 @@ export function SettingsPage() {
         .active-badge {
           font-size: 11px;
           font-weight: 600;
-          color: #3b82f6;
-          background: rgba(59, 130, 246, 0.15);
+          color: var(--accent);
+          background: rgba(201, 162, 39, 0.15);
           padding: 3px 8px;
           border-radius: 4px;
           white-space: nowrap;
@@ -602,7 +582,7 @@ export function SettingsPage() {
           align-items: center;
           gap: 10px;
           padding: 32px;
-          color: #94a3b8;
+          color: var(--text-secondary);
           justify-content: center;
         }
 
@@ -619,31 +599,25 @@ export function SettingsPage() {
         }
         .manual-config-form label span {
           font-size: 13px;
-          color: #94a3b8;
+          color: var(--text-secondary);
           font-weight: 500;
         }
         .manual-config-form input {
-          background: #0f172a;
-          border: 1px solid #334155;
+          background: var(--bg-primary);
+          border: 1px solid var(--border);
           border-radius: 6px;
-          color: #e2e8f0;
+          color: var(--text-primary);
           padding: 10px 14px;
           font-size: 14px;
           outline: none;
         }
         .manual-config-form input:focus {
-          border-color: #3b82f6;
+          border-color: var(--accent);
         }
 
-        .platform-list {
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
-          margin-top: 16px;
-        }
         .platform-card {
-          background: #1e293b;
-          border: 1px solid #334155;
+          background: var(--bg-secondary);
+          border: 1px solid var(--border);
           border-radius: 10px;
           padding: 16px;
           display: flex;
@@ -658,7 +632,7 @@ export function SettingsPage() {
         .platform-name {
           font-size: 15px;
           font-weight: 600;
-          color: #e2e8f0;
+          color: var(--text-primary);
         }
         .platform-card label {
           display: flex;
@@ -667,20 +641,20 @@ export function SettingsPage() {
         }
         .platform-card label span {
           font-size: 12px;
-          color: #94a3b8;
+          color: var(--text-secondary);
           font-weight: 500;
         }
         .platform-card input {
-          background: #0f172a;
-          border: 1px solid #334155;
+          background: var(--bg-primary);
+          border: 1px solid var(--border);
           border-radius: 6px;
-          color: #e2e8f0;
+          color: var(--text-primary);
           padding: 8px 12px;
           font-size: 13px;
           outline: none;
         }
         .platform-card input:focus {
-          border-color: #3b82f6;
+          border-color: var(--accent);
         }
         .toggle-switch {
           position: relative;
@@ -698,7 +672,7 @@ export function SettingsPage() {
           position: absolute;
           cursor: pointer;
           top: 0; left: 0; right: 0; bottom: 0;
-          background: #475569;
+          background: var(--border);
           border-radius: 22px;
           transition: 0.3s;
         }
@@ -714,7 +688,7 @@ export function SettingsPage() {
           transition: 0.3s;
         }
         .toggle-switch input:checked + .toggle-slider {
-          background: #3b82f6;
+          background: var(--accent);
         }
         .toggle-switch input:checked + .toggle-slider:before {
           transform: translateX(18px);

@@ -1,18 +1,17 @@
 import { Outlet, NavLink } from "react-router-dom";
-import { MessageSquare, FolderOpen, Terminal, Brain, Sparkles, Settings, LayoutDashboard, Menu, X, Activity, Eye } from "lucide-react";
+import { MessageSquare, FolderOpen, Terminal, Brain, Sparkles, Settings, LayoutDashboard, Menu, X, Activity } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { CommandPalette } from "./CommandPalette";
 
 const NAV_ITEMS = [
   { path: "/chat", icon: MessageSquare, label: "Chat" },
+  { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { path: "/files", icon: FolderOpen, label: "Files" },
   { path: "/terminal", icon: Terminal, label: "Terminal" },
   { path: "/memory", icon: Brain, label: "Memory" },
   { path: "/skills", icon: Sparkles, label: "Skills" },
   { path: "/inspector", icon: Activity, label: "Inspector" },
   { path: "/settings", icon: Settings, label: "Settings" },
-  { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  { path: "/hud", icon: Eye, label: "HUD" },
 ];
 
 export function WorkspaceLayout() {
@@ -77,7 +76,7 @@ export function WorkspaceLayout() {
 
           {sidebarOpen && (
             <div className="sidebar-footer">
-              <div className="sidebar-version">v0.1.0</div>
+              <div className="sidebar-version">v0.7.0</div>
             </div>
           )}
         </aside>

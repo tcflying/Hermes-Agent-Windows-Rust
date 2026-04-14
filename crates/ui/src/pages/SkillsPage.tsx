@@ -46,7 +46,7 @@ export function SkillsPage() {
       const data = await res.json();
       setGrowth(data.skills_over_time ?? []);
     } catch {
-      // Growth data is optional — don't block UI
+      // Growth data is optional
     }
   }, []);
 
@@ -93,29 +93,33 @@ export function SkillsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full bg-gray-900 text-gray-400">
-        <Sparkles size={24} className="animate-pulse mr-2" /> Loading skills...
+      <div className="page-container" style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "var(--text-secondary)" }}>
+        <Sparkles size={24} style={{ marginRight: 8, animation: "spin 2s linear infinite" }} /> Loading skills...
       </div>
     );
   }
 
   return (
-    <div className="bg-gray-900 text-white min-h-screen p-6 space-y-6">
+    <div className="page-container" style={{ padding: 24, overflow: "auto", color: "var(--text-primary)" }}>
       {/* Stats Header */}
-      <div className="flex items-center justify-between">
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Sparkles size={24} className="text-purple-400" /> Skills
+          <h1 style={{ fontSize: 22, fontWeight: 700, display: "flex", alignItems: "center", gap: 8, margin: 0, color: "var(--text-primary)" }}>
+            <Sparkles size={24} style={{ color: "var(--accent)" }} /> Skills
           </h1>
-          <div className="flex gap-4 mt-2 text-sm text-gray-400">
-            <span>Total: <span className="text-white font-semibold">{skills.length}</span></span>
-            <span>Auto-evolved: <span className="text-purple-400 font-semibold">{autoCount}</span></span>
-            <span>Manual: <span className="text-emerald-400 font-semibold">{manualCount}</span></span>
+          <div style={{ display: "flex", gap: 16, marginTop: 8, fontSize: 13, color: "var(--text-secondary)" }}>
+            <span>Total: <span style={{ color: "var(--text-primary)", fontWeight: 600 }}>{skills.length}</span></span>
+            <span>Auto-evolved: <span style={{ color: "#a78bfa", fontWeight: 600 }}>{autoCount}</span></span>
+            <span>Manual: <span style={{ color: "#34d399", fontWeight: 600 }}>{manualCount}</span></span>
           </div>
         </div>
         <button
           onClick={() => setShowCreateForm(v => !v)}
-          className="flex items-center gap-1.5 px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-sm font-medium transition-colors"
+          style={{
+            display: "flex", alignItems: "center", gap: 6, padding: "8px 16px",
+            background: "var(--accent)", color: "#000", border: "none", borderRadius: 8,
+            fontSize: 13, fontWeight: 600, cursor: "pointer",
+          }}
         >
           {showCreateForm ? <ChevronUp size={16} /> : <Plus size={16} />}
           {showCreateForm ? "Close" : "New Skill"}
@@ -124,52 +128,74 @@ export function SkillsPage() {
 
       {/* Error Banner */}
       {error && (
-        <div className="bg-red-900/50 border border-red-700 rounded-lg p-3 text-red-300 text-sm flex items-center justify-between">
+        <div style={{
+          background: "rgba(229,62,62,0.15)", border: "1px solid rgba(229,62,62,0.4)",
+          borderRadius: 8, padding: "10px 16px", marginBottom: 16, fontSize: 13,
+          color: "#fca5a5", display: "flex", alignItems: "center", justifyContent: "space-between",
+        }}>
           <span>{error}</span>
-          <button onClick={() => setError(null)}><X size={16} /></button>
+          <button onClick={() => setError(null)} style={{ background: "none", border: "none", color: "#fca5a5", cursor: "pointer" }}><X size={16} /></button>
         </div>
       )}
 
       {/* Create Form */}
       {showCreateForm && (
-        <form onSubmit={handleCreate} className="bg-gray-800 rounded-xl p-5 space-y-4 border border-gray-700">
-          <h2 className="text-lg font-semibold">Create Skill</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <form onSubmit={handleCreate} style={{
+          background: "var(--bg-secondary)", borderRadius: 12, padding: 20,
+          marginBottom: 24, border: "1px solid var(--border)",
+        }}>
+          <h2 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, color: "var(--text-primary)" }}>Create Skill</h2>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
             <div>
-              <label className="block text-xs text-gray-400 mb-1">Name</label>
+              <label style={{ display: "block", fontSize: 12, color: "var(--text-secondary)", marginBottom: 4 }}>Name</label>
               <input
                 type="text"
                 value={createForm.name}
                 onChange={e => setCreateForm(f => ({ ...f, name: e.target.value }))}
-                className="w-full bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500"
+                style={{
+                  width: "100%", background: "var(--bg-primary)", border: "1px solid var(--border)",
+                  borderRadius: 8, padding: "8px 12px", fontSize: 13, color: "var(--text-primary)", outline: "none",
+                }}
                 placeholder="my-skill"
                 required
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-400 mb-1">Description</label>
+              <label style={{ display: "block", fontSize: 12, color: "var(--text-secondary)", marginBottom: 4 }}>Description</label>
               <input
                 type="text"
                 value={createForm.description}
                 onChange={e => setCreateForm(f => ({ ...f, description: e.target.value }))}
-                className="w-full bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-purple-500"
+                style={{
+                  width: "100%", background: "var(--bg-primary)", border: "1px solid var(--border)",
+                  borderRadius: 8, padding: "8px 12px", fontSize: 13, color: "var(--text-primary)", outline: "none",
+                }}
                 placeholder="What this skill does"
               />
             </div>
           </div>
-          <div>
-            <label className="block text-xs text-gray-400 mb-1">Content</label>
+          <div style={{ marginTop: 12 }}>
+            <label style={{ display: "block", fontSize: 12, color: "var(--text-secondary)", marginBottom: 4 }}>Content</label>
             <textarea
               value={createForm.content}
               onChange={e => setCreateForm(f => ({ ...f, content: e.target.value }))}
-              className="w-full bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-sm h-32 resize-y focus:outline-none focus:border-purple-500"
+              style={{
+                width: "100%", background: "var(--bg-primary)", border: "1px solid var(--border)",
+                borderRadius: 8, padding: "8px 12px", fontSize: 13, color: "var(--text-primary)",
+                height: 128, resize: "vertical", outline: "none", fontFamily: "var(--font-mono)",
+              }}
               placeholder="Skill content / instructions..."
             />
           </div>
           <button
             type="submit"
             disabled={submitting || !createForm.name.trim()}
-            className="px-5 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-sm font-medium transition-colors"
+            style={{
+              marginTop: 12, padding: "8px 20px",
+              background: submitting ? "var(--bg-tertiary)" : "var(--accent)",
+              color: submitting ? "var(--text-secondary)" : "#000",
+              border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: submitting ? "not-allowed" : "pointer",
+            }}
           >
             {submitting ? "Creating..." : "Create"}
           </button>
@@ -178,27 +204,33 @@ export function SkillsPage() {
 
       {/* Growth Chart */}
       {growth.length > 0 && (
-        <div className="bg-gray-800 rounded-xl p-5 border border-gray-700">
-          <h2 className="text-lg font-semibold flex items-center gap-2 mb-4">
-            <BarChart3 size={18} className="text-purple-400" /> Growth Over Time
+        <div style={{
+          background: "var(--bg-secondary)", borderRadius: 12, padding: 20,
+          marginBottom: 24, border: "1px solid var(--border)",
+        }}>
+          <h2 style={{ fontSize: 16, fontWeight: 600, display: "flex", alignItems: "center", gap: 8, marginBottom: 16, color: "var(--text-primary)" }}>
+            <BarChart3 size={18} style={{ color: "var(--accent)" }} /> Growth Over Time
           </h2>
-          <div className="space-y-2">
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {growth.map(g => {
               const maxCount = Math.max(...growth.map(x => x.count), 1);
               const widthPct = Math.max((g.count / maxCount) * 100, 2);
               return (
-                <div key={g.date} className="flex items-center gap-3 text-sm">
-                  <span className="text-gray-400 w-20 shrink-0 text-right font-mono">{g.date}</span>
-                  <div className="flex-1 bg-gray-700 rounded-full h-5 overflow-hidden">
+                <div key={g.date} style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 13 }}>
+                  <span style={{ color: "var(--text-secondary)", width: 80, textAlign: "right", fontFamily: "var(--font-mono)", flexShrink: 0 }}>{g.date}</span>
+                  <div style={{ flex: 1, background: "var(--bg-tertiary)", borderRadius: 12, height: 20, overflow: "hidden" }}>
                     <div
-                      className="h-full bg-gradient-to-r from-purple-600 to-purple-400 rounded-full flex items-center px-2 text-xs font-medium"
-                      style={{ width: `${widthPct}%` }}
+                      style={{
+                        height: "100%", background: "var(--accent)", borderRadius: 12,
+                        width: `${widthPct}%`, display: "flex", alignItems: "center", paddingLeft: 8,
+                        fontSize: 11, fontWeight: 600, color: "#000",
+                      }}
                     >
                       {g.count}
                     </div>
                   </div>
                   {g.new_skills > 0 && (
-                    <span className="text-emerald-400 text-xs shrink-0">+{g.new_skills} new</span>
+                    <span style={{ color: "#34d399", fontSize: 12, flexShrink: 0 }}>+{g.new_skills} new</span>
                   )}
                 </div>
               );
@@ -209,46 +241,54 @@ export function SkillsPage() {
 
       {/* Skills Grid */}
       {skills.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-gray-500">
-          <Sparkles size={48} className="mb-3 opacity-50" />
-          <h2 className="text-lg font-medium text-gray-300">No Skills Yet</h2>
-          <p className="text-sm mt-1">Create your first skill or wait for auto-evolved skills to appear.</p>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "80px 20px", color: "var(--text-secondary)" }}>
+          <Sparkles size={48} style={{ marginBottom: 12, opacity: 0.4 }} />
+          <h2 style={{ fontSize: 18, fontWeight: 500, color: "var(--text-primary)" }}>No Skills Yet</h2>
+          <p style={{ fontSize: 14, marginTop: 4 }}>Create your first skill or wait for auto-evolved skills to appear.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 16 }}>
           {skills.map(skill => {
             const isAuto = skill.name.startsWith("auto-");
             return (
               <div
                 key={skill.name}
-                className="bg-gray-800 rounded-xl border border-gray-700 p-4 flex flex-col justify-between hover:border-gray-600 transition-colors"
+                style={{
+                  background: "var(--bg-secondary)", borderRadius: 12,
+                  border: "1px solid var(--border)", padding: 16,
+                  display: "flex", flexDirection: "column", justifyContent: "space-between",
+                }}
               >
                 <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Sparkles size={16} className={isAuto ? "text-purple-400" : "text-gray-400"} />
-                    <h3 className="font-semibold truncate">{skill.name}</h3>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                    <Sparkles size={16} style={{ color: isAuto ? "#a78bfa" : "var(--text-secondary)" }} />
+                    <h3 style={{ fontSize: 15, fontWeight: 600, margin: 0, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{skill.name}</h3>
                     {isAuto && (
-                      <span className="ml-auto text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-purple-600/30 text-purple-300 border border-purple-500/40">
+                      <span style={{
+                        marginLeft: "auto", fontSize: 10, fontWeight: 700, textTransform: "uppercase",
+                        letterSpacing: "0.05em", padding: "2px 8px", borderRadius: 12,
+                        background: "rgba(167,139,250,0.2)", color: "#a78bfa", border: "1px solid rgba(167,139,250,0.3)",
+                      }}>
                         Auto-evolved
                       </span>
                     )}
                   </div>
                   {skill.description && (
-                    <p className="text-sm text-gray-400 mb-2">{skill.description}</p>
+                    <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: "0 0 8px", lineHeight: 1.5 }}>{skill.description}</p>
                   )}
                   {skill.content && (
-                    <p className="text-xs text-gray-500 line-clamp-2 mb-2">
+                    <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: 0, opacity: 0.7, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {skill.content.slice(0, 100)}{skill.content.length > 100 ? "..." : ""}
                     </p>
                   )}
                 </div>
-                <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-700">
-                  <span className="text-[11px] text-gray-500">
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
+                  <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>
                     {skill.created_at ? new Date(skill.created_at).toLocaleDateString() : ""}
                   </span>
                   <button
                     onClick={() => handleDelete(skill.name)}
-                    className="flex items-center gap-1 text-xs text-red-400 hover:text-red-300 transition-colors"
+                    style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, color: "#ef4444", background: "none", border: "none", cursor: "pointer" }}
                   >
                     <Trash2 size={13} /> Delete
                   </button>

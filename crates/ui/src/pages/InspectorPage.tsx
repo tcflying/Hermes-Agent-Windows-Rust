@@ -10,6 +10,13 @@ interface LogEntry {
   details?: string;
 }
 
+const LEVEL_COLORS: Record<string, { bg: string; text: string }> = {
+  info: { bg: "rgba(201,162,39,0.15)", text: "#c9a227" },
+  warn: { bg: "rgba(245,158,11,0.15)", text: "#f59e0b" },
+  error: { bg: "rgba(229,62,62,0.15)", text: "#ef4444" },
+  success: { bg: "rgba(34,197,94,0.15)", text: "#22c55e" },
+};
+
 export function InspectorPage() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [activeTab, setActiveTab] = useState<"logs" | "sessions" | "tools">("logs");
@@ -76,36 +83,48 @@ export function InspectorPage() {
           className={`tab-btn ${activeTab === "tools" ? "active" : ""}`}
           onClick={() => setActiveTab("tools")}
         >
-          Tools
+          Tools ({tools.length})
         </button>
       </div>
 
-      <div className="inspector-content">
+      <div className="inspector-content" style={{ padding: "0 24px 24px", overflow: "auto" }}>
         {activeTab === "logs" && (
           <div className="logs-panel">
             <div className="logs-actions">
               <button className="logs-clear-btn" onClick={clearLogs}>Clear Logs</button>
             </div>
             <div className="logs-list">
-              {logs.map(log => (
-                <div key={log.id} className={`log-entry ${log.level}`}>
-                  <div className="log-icon">
-                    {log.level === "info" && <Activity size={14} />}
-                    {log.level === "warn" && <AlertTriangle size={14} />}
-                    {log.level === "error" && <XCircle size={14} />}
-                    {log.level === "success" && <CheckCircle2 size={14} />}
-                  </div>
-                  <div className="log-content">
-                    <div className="log-header">
-                      <span className="log-message">{log.message}</span>
-                      <span className="log-time">
-                        <Clock size={11} /> {new Date(log.timestamp).toLocaleTimeString()}
-                      </span>
+              {logs.map(log => {
+                const colors = LEVEL_COLORS[log.level] || LEVEL_COLORS.info;
+                return (
+                  <div key={log.id} className={`log-entry ${log.level}`}>
+                    <div className="log-icon">
+                      {log.level === "info" && <Activity size={14} />}
+                      {log.level === "warn" && <AlertTriangle size={14} />}
+                      {log.level === "error" && <XCircle size={14} />}
+                      {log.level === "success" && <CheckCircle2 size={14} />}
                     </div>
-                    {log.details && <div className="log-details">{log.details}</div>}
+                    <div className="log-content">
+                      <div className="log-header">
+                        <span className="log-message" style={{ color: "var(--text-primary)" }}>
+                          <span style={{
+                            display: "inline-block", padding: "1px 6px", borderRadius: 4,
+                            fontSize: 10, fontWeight: 700, textTransform: "uppercase",
+                            background: colors.bg, color: colors.text, marginRight: 8,
+                          }}>
+                            {log.level}
+                          </span>
+                          {log.message}
+                        </span>
+                        <span className="log-time">
+                          <Clock size={11} /> {new Date(log.timestamp).toLocaleTimeString()}
+                        </span>
+                      </div>
+                      {log.details && <div className="log-details">{log.details}</div>}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
@@ -119,7 +138,7 @@ export function InspectorPage() {
                 {sessions.map(s => (
                   <div key={s.id} className="session-row">
                     <div className="session-info">
-                      <span className="session-name">{s.model || "Chat"}</span>
+                      <span className="session-name" style={{ color: "var(--text-primary)" }}>{s.model || "Chat"}</span>
                       <span className="session-id">{s.id.slice(0, 8)}...</span>
                     </div>
                     <span className="session-time">
@@ -133,14 +152,25 @@ export function InspectorPage() {
         )}
 
         {activeTab === "tools" && (
-          <div className="tools-panel">
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(350px, 1fr))",
+            gap: 8,
+          }}>
             {tools.map(t => (
               <div key={t.name} className="tool-row">
-                <span className="tool-name">{t.name}</span>
+                <div style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1, minWidth: 0 }}>
+                  <span className="tool-name" style={{ color: "var(--text-primary)" }}>{t.name}</span>
+                  {t.description && (
+                    <span style={{ fontSize: 11, color: "var(--text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {t.description}
+                    </span>
+                  )}
+                </div>
                 <span className="tool-status enabled">enabled</span>
               </div>
             ))}
-            {tools.length === 0 && <div className="inspector-empty">No tools loaded</div>}
+            {tools.length === 0 && <div className="inspector-empty" style={{ gridColumn: "1 / -1" }}>No tools loaded</div>}
           </div>
         )}
       </div>

@@ -408,6 +408,7 @@ export interface AppConfig {
     slack: { bot_token: string; enabled: boolean };
     whatsapp: { bridge_url: string; api_token: string; enabled: boolean };
     signal: { http_url: string; account: string; enabled: boolean };
+    feishu: { app_id: string; app_secret: string; verification_token: string; enabled: boolean };
   };
 }
 

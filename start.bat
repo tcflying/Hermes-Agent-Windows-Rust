@@ -7,7 +7,7 @@ echo Done.
 
 echo.
 echo =========================================
-echo    Hermes Agent v0.6.0 - Starting
+echo    Hermes Agent v0.6.1 - Starting
 echo =========================================
 echo.
 

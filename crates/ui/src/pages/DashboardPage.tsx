@@ -1,6 +1,25 @@
-import { MessageSquare, Zap, Activity, Users, Terminal } from "lucide-react";
+import { MessageSquare, Zap, Activity, Users, Terminal, Clock, Wrench, Cpu } from "lucide-react";
 import { useState, useEffect } from "react";
 import { listSessions, getConfig, healthCheck, SessionInfo } from "../api";
+
+interface HudStats {
+  uptime_seconds: number;
+  total_sessions: number;
+  total_messages: number;
+  total_skills: number;
+  backend_status: string;
+  active_model: string;
+}
+
+function formatUptime(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`;
+  const m = Math.floor(seconds / 60);
+  if (m < 60) return `${m}m ${seconds % 60}s`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ${m % 60}m`;
+  const d = Math.floor(h / 24);
+  return `${d}d ${h % 24}h`;
+}
 
 function formatDate(iso: string): string {
   try {
@@ -27,6 +46,7 @@ export function DashboardPage() {
   });
   const [model, setModel] = useState("MiniMax-M2.7-highspeed");
   const [backendUp, setBackendUp] = useState(false);
+  const [hudStats, setHudStats] = useState<HudStats | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -47,6 +67,20 @@ export function DashboardPage() {
     };
     load();
   }, []);
+
+  useEffect(() => {
+    fetch("http://localhost:3848/api/hud/stats")
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data) setHudStats(data);
+      })
+      .catch(() => {});
+  }, []);
+
+  const uptime = hudStats?.uptime_seconds ?? 0;
+  const totalMessages = hudStats?.total_messages ?? stats.totalMessages;
+  const totalSkills = hudStats?.total_skills ?? 0;
+  const activeModel = hudStats?.active_model ?? model;
 
   return (
     <div className="page-container dashboard-page">
@@ -80,7 +114,7 @@ export function DashboardPage() {
             <Zap size={24} />
           </div>
           <div className="stat-info">
-            <div className="stat-value">{model.split("/")[1] || model}</div>
+            <div className="stat-value">{activeModel.split("/").pop() || activeModel}</div>
             <div className="stat-label">Current Model</div>
           </div>
         </div>
@@ -90,8 +124,38 @@ export function DashboardPage() {
             <Terminal size={24} />
           </div>
           <div className="stat-info">
-            <div className="stat-value">v0.6.0</div>
+            <div className="stat-value">v0.6.1</div>
             <div className="stat-label">Hermes Version</div>
+          </div>
+        </div>
+
+        <div className="stat-card">
+          <div className="stat-icon">
+            <Clock size={24} />
+          </div>
+          <div className="stat-info">
+            <div className="stat-value">{uptime > 0 ? formatUptime(uptime) : "—"}</div>
+            <div className="stat-label">Uptime</div>
+          </div>
+        </div>
+
+        <div className="stat-card">
+          <div className="stat-icon">
+            <Wrench size={24} />
+          </div>
+          <div className="stat-info">
+            <div className="stat-value">{totalSkills}</div>
+            <div className="stat-label">Total Skills</div>
+          </div>
+        </div>
+
+        <div className="stat-card">
+          <div className="stat-icon">
+            <Cpu size={24} />
+          </div>
+          <div className="stat-info">
+            <div className="stat-value">{totalMessages}</div>
+            <div className="stat-label">Total Messages</div>
           </div>
         </div>
       </div>
