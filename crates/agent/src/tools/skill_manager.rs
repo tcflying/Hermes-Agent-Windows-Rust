@@ -3,6 +3,10 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 
+fn default_category() -> String {
+    "general".to_string()
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Skill {
     pub name: String,
@@ -12,6 +16,8 @@ pub struct Skill {
     pub updated_at: String,
     pub source: String,
     pub enabled: bool,
+    #[serde(default = "default_category")]
+    pub category: String,
     #[serde(default)]
     pub usage_count: u32,
     #[serde(default)]
@@ -48,6 +54,7 @@ fn load_skill_from_file(name: &str) -> Option<Skill> {
             updated_at: chrono::Utc::now().to_rfc3339(),
             source: "user".to_string(),
             enabled: true,
+            category: "general".to_string(),
             usage_count: 0,
             last_used_at: None,
         }
@@ -123,6 +130,7 @@ impl SkillManager {
             updated_at: now,
             source: "user".to_string(),
             enabled: true,
+            category: "general".to_string(),
             usage_count: 0,
             last_used_at: None,
         };

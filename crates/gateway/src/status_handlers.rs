@@ -57,19 +57,41 @@ pub struct AnalyticsQuery {
 
 #[derive(Debug, Serialize)]
 pub struct DailyUsage {
-    pub date: String,
-    pub model: String,
+    pub day: String,
     pub input_tokens: u64,
     pub output_tokens: u64,
+    pub cache_read_tokens: u64,
+    pub reasoning_tokens: u64,
+    pub estimated_cost: f64,
+    pub actual_cost: f64,
     pub sessions: u64,
 }
 
 #[derive(Debug, Serialize)]
-pub struct AnalyticsResponse {
-    pub days: Vec<DailyUsage>,
-    pub total_input_tokens: u64,
-    pub total_output_tokens: u64,
+pub struct ModelUsage {
+    pub model: String,
+    pub input_tokens: u64,
+    pub output_tokens: u64,
+    pub estimated_cost: f64,
+    pub sessions: u64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct Totals {
+    pub total_input: u64,
+    pub total_output: u64,
+    pub total_cache_read: u64,
+    pub total_reasoning: u64,
+    pub total_estimated_cost: f64,
+    pub total_actual_cost: f64,
     pub total_sessions: u64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct AnalyticsResponse {
+    pub daily: Vec<DailyUsage>,
+    pub by_model: Vec<ModelUsage>,
+    pub totals: Totals,
 }
 
 #[derive(Debug, Deserialize)]
@@ -171,33 +193,55 @@ pub async fn get_analytics(
         .await
         .map_err(|e| server_error(e))?;
 
-    let mut days_map: HashMap<String, DailyUsage> = HashMap::new();
+    let mut daily_map: HashMap<String, DailyUsage> = HashMap::new();
+    let mut model_map: HashMap<String, ModelUsage> = HashMap::new();
 
     for session in &sessions {
-        let date_key = session.created_at.get(..10).unwrap_or(&session.created_at).to_string();
+        let day_key = session.created_at.get(..10).unwrap_or(&session.created_at).to_string();
         let model = session.model.clone().unwrap_or_default();
 
-        let key = format!("{}:{}", date_key, model);
-        let entry = days_map.entry(key).or_insert_with(|| DailyUsage {
-            date: date_key.clone(),
-            model: model.clone(),
+        let day_entry = daily_map.entry(day_key.clone()).or_insert_with(|| DailyUsage {
+            day: day_key,
             input_tokens: 0,
             output_tokens: 0,
+            cache_read_tokens: 0,
+            reasoning_tokens: 0,
+            estimated_cost: 0.0,
+            actual_cost: 0.0,
             sessions: 0,
         });
-        entry.sessions += 1;
+        day_entry.sessions += 1;
+
+        let model_entry = model_map.entry(model.clone()).or_insert_with(|| ModelUsage {
+            model,
+            input_tokens: 0,
+            output_tokens: 0,
+            estimated_cost: 0.0,
+            sessions: 0,
+        });
+        model_entry.sessions += 1;
     }
 
-    let mut days: Vec<DailyUsage> = days_map.into_values().collect();
-    days.sort_by(|a, b| b.date.cmp(&a.date));
+    let mut daily: Vec<DailyUsage> = daily_map.into_values().collect();
+    daily.sort_by(|a, b| b.day.cmp(&a.day));
 
-    let total_sessions = days.iter().map(|d| d.sessions).sum();
+    let mut by_model: Vec<ModelUsage> = model_map.into_values().collect();
+    by_model.sort_by(|a, b| b.sessions.cmp(&a.sessions));
+
+    let totals = Totals {
+        total_input: daily.iter().map(|d| d.input_tokens).sum(),
+        total_output: daily.iter().map(|d| d.output_tokens).sum(),
+        total_cache_read: daily.iter().map(|d| d.cache_read_tokens).sum(),
+        total_reasoning: daily.iter().map(|d| d.reasoning_tokens).sum(),
+        total_estimated_cost: daily.iter().map(|d| d.estimated_cost).sum(),
+        total_actual_cost: daily.iter().map(|d| d.actual_cost).sum(),
+        total_sessions: daily.iter().map(|d| d.sessions).sum(),
+    };
 
     Ok(Json(AnalyticsResponse {
-        days,
-        total_input_tokens: 0,
-        total_output_tokens: 0,
-        total_sessions,
+        daily,
+        by_model,
+        totals,
     }))
 }
 

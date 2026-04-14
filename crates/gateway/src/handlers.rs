@@ -11,7 +11,7 @@ use hermes_agent::chat::{self, Message};
 use hermes_agent::tools::skill_manager::SkillManager;
 use hermes_agent::MemoryStore;
 use hermes_config::{ConfigLoader, ConfigUpdate};
-use hermes_session::{SessionDb, SessionInfo, SessionMessage};
+use hermes_session::{SessionDb, SessionInfo};
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -368,13 +368,37 @@ async fn chat_interrupt(
 
 async fn list_sessions(
     State(state): State<AppState>,
-) -> Result<Json<Vec<SessionInfo>>, (StatusCode, Json<ErrorResponse>)> {
-    match state.session_db.read().await.list_sessions().await {
-        Ok(sessions) => Ok(Json(sessions)),
-        Err(e) => Err((StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse {
-            error: e.to_string(),
-        }))),
+) -> Result<Json<Vec<serde_json::Value>>, (StatusCode, Json<ErrorResponse>)> {
+    let db = state.session_db.read().await;
+    let sessions = db.list_sessions().await.map_err(|e| {
+        (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse { error: e.to_string() }))
+    })?;
+    let mut result = Vec::with_capacity(sessions.len());
+    for s in &sessions {
+        let message_count = db.count_messages(&s.id).await.unwrap_or(0);
+        let started_at = chrono::DateTime::parse_from_rfc3339(&s.created_at)
+            .map(|dt| dt.timestamp() as u64)
+            .unwrap_or(0);
+        let last_active = chrono::DateTime::parse_from_rfc3339(&s.updated_at)
+            .map(|dt| dt.timestamp() as u64)
+            .unwrap_or(0);
+        result.push(serde_json::json!({
+            "id": s.id,
+            "source": serde_json::Value::Null,
+            "model": s.model,
+            "title": serde_json::Value::Null,
+            "started_at": started_at,
+            "ended_at": serde_json::Value::Null,
+            "last_active": last_active,
+            "is_active": false,
+            "message_count": message_count,
+            "tool_call_count": 0,
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "preview": serde_json::Value::Null,
+        }));
     }
+    Ok(Json(result))
 }
 
 async fn create_session(
@@ -412,9 +436,21 @@ async fn get_session(
 async fn get_session_messages(
     State(state): State<AppState>,
     Path(id): Path<String>,
-) -> Result<Json<Vec<SessionMessage>>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
     match state.session_db.read().await.get_messages(&id).await {
-        Ok(messages) => Ok(Json(messages)),
+        Ok(messages) => {
+            let messages_json: Vec<serde_json::Value> = messages.iter().map(|m| {
+                serde_json::json!({
+                    "role": m.role,
+                    "content": m.content,
+                    "timestamp": m.timestamp,
+                })
+            }).collect();
+            Ok(Json(serde_json::json!({
+                "session_id": id,
+                "messages": messages_json,
+            })))
+        }
         Err(e) => Err((StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse {
             error: e.to_string(),
         }))),
@@ -861,22 +897,44 @@ async fn hud_health(
 
 #[derive(Debug, Deserialize)]
 struct LogsQuery {
-    limit: Option<usize>,
+    file: Option<String>,
+    lines: Option<usize>,
     level: Option<String>,
+    component: Option<String>,
 }
 
 async fn get_logs(
     State(state): State<AppState>,
     Query(q): Query<LogsQuery>,
 ) -> Json<serde_json::Value> {
+    let file_name = q.file.as_deref().unwrap_or("agent").to_string();
+    let line_count = q.lines.unwrap_or(100);
+
+    // Map frontend level to internal level filter.
+    // Frontend sends: ALL, DEBUG, INFO, WARNING, ERROR
+    // Internal levels: debug, info, warn, error
+    let level_filter: Option<String> = match q.level.as_deref() {
+        Some("ALL") | None => None,
+        Some("WARNING") => Some("warn".to_string()),
+        Some(lvl) => Some(lvl.to_lowercase()),
+    };
+    let level_filter = level_filter.as_deref();
+
+    // Map frontend component to internal target filter.
+    // Frontend sends: all, gateway, agent, tools, cli, cron
+    let target_filter: Option<&str> = match q.component.as_deref() {
+        Some("all") | None => None,
+        Some(c) => Some(c),
+    };
+
     let buf = state.log_buffer.lock().unwrap();
-    let entries = buf.query(q.level.as_deref(), None, q.limit, None);
-    let entries_json: Vec<serde_json::Value> = entries.iter()
-        .map(|e| serde_json::to_value(e).unwrap_or_default())
+    let entries = buf.query(level_filter, target_filter, Some(line_count), None);
+    let lines: Vec<String> = entries.iter()
+        .map(|e| format!("[{}] {}", e.level.to_uppercase(), e.message))
         .collect();
     Json(serde_json::json!({
-        "entries": entries_json,
-        "total": buf.len(),
+        "file": file_name,
+        "lines": lines,
     }))
 }
 
@@ -958,12 +1016,31 @@ struct CreateSkillRequest {
 async fn list_skills() -> Result<Json<serde_json::Value>, (StatusCode, Json<ErrorResponse>)> {
     let skill_mgr = SkillManager::new();
     let list_str = skill_mgr.list();
-    match serde_json::from_str::<serde_json::Value>(&list_str) {
-        Ok(v) => Ok(Json(v)),
-        Err(e) => Err((StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse {
-            error: format!("Failed to parse skills list: {}", e),
-        }))),
-    }
+    let parsed: serde_json::Value = match serde_json::from_str(&list_str) {
+        Ok(v) => v,
+        Err(e) => {
+            return Err((StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse {
+                error: format!("Failed to parse skills list: {}", e),
+            })));
+        }
+    };
+    let skills_array = parsed
+        .get("skills")
+        .and_then(|v| v.as_array())
+        .cloned()
+        .unwrap_or_default();
+    let result: Vec<serde_json::Value> = skills_array
+        .into_iter()
+        .map(|s| {
+            serde_json::json!({
+                "name": s["name"].as_str().unwrap_or(""),
+                "description": s["description"].as_str().unwrap_or(""),
+                "category": s.get("category").and_then(|v| v.as_str()).unwrap_or("general"),
+                "enabled": s["enabled"].as_bool().unwrap_or(true),
+            })
+        })
+        .collect();
+    Ok(Json(serde_json::json!(result)))
 }
 
 async fn create_skill(

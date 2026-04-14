@@ -62,11 +62,6 @@ pub struct CronJob {
     pub last_error: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
-pub struct CronJobListResponse {
-    pub jobs: Vec<CronJob>,
-}
-
 #[derive(Debug, Deserialize)]
 pub struct CreateCronJobRequest {
     pub prompt: String,
@@ -178,9 +173,9 @@ fn parse_schedule(input: &str) -> Result<CronSchedule, String> {
 
 pub async fn list_jobs(
     State(_state): State<AppState>,
-) -> Result<Json<CronJobListResponse>, ApiError> {
+) -> Result<Json<Vec<CronJob>>, ApiError> {
     let jobs = load_jobs();
-    Ok(Json(CronJobListResponse { jobs }))
+    Ok(Json(jobs))
 }
 
 pub async fn create_job(

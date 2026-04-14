@@ -104,15 +104,32 @@ impl SessionDb {
         })
     }
 
+    pub async fn count_messages(&self, session_id: &str) -> Result<usize> {
+        let conn = self.conn.lock().await;
+        let count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM messages WHERE session_id = ?1",
+                params![session_id],
+                |row| row.get(0),
+            )
+            .unwrap_or(0);
+        Ok(count as usize)
+    }
+
     pub async fn get_messages(&self, session_id: &str) -> Result<Vec<SessionMessage>> {
         let conn = self.conn.lock().await;
         let mut stmt = conn.prepare(
-            "SELECT role, content FROM messages WHERE session_id = ?1 ORDER BY id ASC",
+            "SELECT role, content, created_at FROM messages WHERE session_id = ?1 ORDER BY id ASC",
         )?;
         let rows = stmt.query_map(params![session_id], |row| {
+            let created_at_str: String = row.get(2)?;
+            let timestamp = chrono::DateTime::parse_from_rfc3339(&created_at_str)
+                .ok()
+                .map(|dt| dt.timestamp() as u64);
             Ok(SessionMessage {
                 role: row.get(0)?,
                 content: row.get(1)?,
+                timestamp,
             })
         })?;
         let mut result = Vec::new();
@@ -180,6 +197,8 @@ pub struct SessionInfo {
 pub struct SessionMessage {
     pub role: String,
     pub content: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub timestamp: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
