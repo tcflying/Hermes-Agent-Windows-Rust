@@ -1,39 +1,61 @@
-import { ChevronDown, ChevronUp, Wrench, MessageSquare, Monitor } from "lucide-react";
-import { useState, useEffect, useRef, useCallback } from "react";
-import { listSessions, listTools, fetchLogs, SessionInfo } from "../api";
+import { Wrench, MessageSquare, Search, ChevronDown, ChevronRight } from "lucide-react";
+import { useState, useEffect } from "react";
+import { listSessions, listTools, getSessionMessages, searchSessions, SessionInfo } from "../api";
 
-const LEVEL_COLORS: Record<string, { bg: string; text: string }> = {
-  info: { bg: "rgba(201,162,39,0.15)", text: "#c9a227" },
-  warn: { bg: "rgba(245,158,11,0.15)", text: "#f59e0b" },
-  error: { bg: "rgba(229,62,62,0.15)", text: "#ef4444" },
-  debug: { bg: "rgba(100,100,100,0.15)", text: "#888" },
-};
+function MessageBubble({ msg }: { msg: { role: string; content: string; timestamp?: string } }) {
+  const isUser = msg.role === "user";
+  const isSystem = msg.role === "system";
+  const isTool = msg.role === "tool";
 
-const POLL_INTERVAL = 2000;
-const MAX_LOG_LINES = 500;
+  const bg = isUser ? "rgba(201,162,39,0.1)" : isSystem ? "rgba(100,100,100,0.1)" : isTool ? "rgba(16,185,129,0.1)" : "var(--bg-secondary)";
+  const border = isUser ? "rgba(201,162,39,0.3)" : isSystem ? "rgba(100,100,100,0.3)" : isTool ? "rgba(16,185,129,0.3)" : "var(--border)";
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 2, marginBottom: 6 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <span style={{
+          fontSize: 10, fontWeight: 600, textTransform: "uppercase",
+          padding: "1px 5px", borderRadius: 2,
+          background: bg, color: isUser ? "#c9a227" : isTool ? "#10b981" : isSystem ? "#888" : "var(--text-primary)",
+          border: `1px solid ${border}`,
+        }}>
+          {msg.role}
+        </span>
+        {msg.timestamp && (
+          <span style={{ fontSize: 10, color: "var(--text-secondary)" }}>
+            {new Date(msg.timestamp).toLocaleTimeString()}
+          </span>
+        )}
+      </div>
+      <div style={{
+        fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.5,
+        background: bg, border: `1px solid ${border}`, borderRadius: 4,
+        padding: "6px 10px", maxHeight: 200, overflow: "auto",
+        whiteSpace: "pre-wrap", wordBreak: "break-word",
+      }}>
+        {msg.content}
+      </div>
+    </div>
+  );
+}
 
 export function InspectorPage() {
   const [activeTab, setActiveTab] = useState<"tools" | "sessions">("tools");
   const [sessions, setSessions] = useState<SessionInfo[]>([]);
   const [tools, setTools] = useState<{ name: string; description: string }[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<{ session_id: string; snippet: string; model: string | null }[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [expandedSession, setExpandedSession] = useState<string | null>(null);
+  const [messages, setMessages] = useState<{ role: string; content: string; timestamp?: string }[]>([]);
+  const [loadingMsgs, setLoadingMsgs] = useState(false);
 
-  const [liveLogs, setLiveLogs] = useState<string[]>([]);
-  const [logPanelHeight, setLogPanelHeight] = useState(180);
-  const [logExpanded, setLogExpanded] = useState(true);
-  const logEndRef = useRef<HTMLDivElement>(null);
-  const lastCountRef = useRef(0);
-
-  useEffect(() => {
-    listSessions().then(s => setSessions(s)).catch(() => {});
-  }, []);
-
+  useEffect(() => { listSessions().then(s => setSessions(s)).catch(() => {}); }, []);
   useEffect(() => {
     listTools()
       .then(data => {
         const mapped = data.map(t => {
-          if (t.function && t.function.name) {
-            return { name: t.function.name, description: t.function.description || "" };
-          }
+          if (t.function && t.function.name) return { name: t.function.name, description: t.function.description || "" };
           return { name: t.name || "unknown", description: t.description || "" };
         });
         setTools(mapped);
@@ -41,223 +63,179 @@ export function InspectorPage() {
       .catch(() => {});
   }, []);
 
-  const pollLogs = useCallback(async () => {
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
+    setSearching(true);
     try {
-      const data = await fetchLogs(MAX_LOG_LINES);
-      const lines = data.lines || [];
-      if (lines.length !== lastCountRef.current) {
-        lastCountRef.current = lines.length;
-        setLiveLogs(lines);
-      }
-    } catch {}
-  }, []);
+      const results = await searchSessions(searchQuery.trim());
+      setSearchResults(results);
+    } catch { setSearchResults([]); }
+    finally { setSearching(false); }
+  };
 
-  useEffect(() => {
-    pollLogs();
-    const timer = setInterval(pollLogs, POLL_INTERVAL);
-    return () => clearInterval(timer);
-  }, [pollLogs]);
-
-  useEffect(() => {
-    if (logEndRef.current) {
-      logEndRef.current.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [liveLogs.length]);
-
-  const handleResizeStart = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    const startY = e.clientY;
-    const startH = logPanelHeight;
-    const onMove = (ev: MouseEvent) => {
-      const delta = startY - ev.clientY;
-      setLogPanelHeight(Math.max(80, Math.min(500, startH + delta)));
-    };
-    const onUp = () => {
-      document.removeEventListener("mousemove", onMove);
-      document.removeEventListener("mouseup", onUp);
-      document.body.style.cursor = "";
-      document.body.style.userSelect = "";
-    };
-    document.addEventListener("mousemove", onMove);
-    document.addEventListener("mouseup", onUp);
-    document.body.style.cursor = "ns-resize";
-    document.body.style.userSelect = "none";
-  }, [logPanelHeight]);
-
-  const parseLine = (line: string) => {
-    const m = line.match(/^\[(\w+)\]\s*(.*)/);
-    return { level: m ? m[1].toLowerCase() : "info", message: m ? m[2] : line };
+  const toggleSession = async (id: string) => {
+    if (expandedSession === id) { setExpandedSession(null); setMessages([]); return; }
+    setExpandedSession(id);
+    setLoadingMsgs(true);
+    try {
+      const msgs = await getSessionMessages(id);
+      setMessages(msgs);
+    } catch { setMessages([]); }
+    finally { setLoadingMsgs(false); }
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
-      <div className="page-container inspector-page" style={{ flex: "1 1 auto", overflow: "auto", minHeight: 0 }}>
-        <div className="page-header">
-          <h1>Inspector</h1>
-        </div>
+    <div className="page-container inspector-page">
+      <div className="page-header"><h1>Inspector</h1></div>
 
-        <div className="inspector-tabs">
-          <button
-            className={`tab-btn ${activeTab === "tools" ? "active" : ""}`}
-            onClick={() => setActiveTab("tools")}
-          >
-            <Wrench size={14} /> Tools ({tools.length})
-          </button>
-          <button
-            className={`tab-btn ${activeTab === "sessions" ? "active" : ""}`}
-            onClick={() => setActiveTab("sessions")}
-          >
-            <MessageSquare size={14} /> Sessions ({sessions.length})
-          </button>
-        </div>
-
-        <div className="inspector-content" style={{ padding: "0 24px 24px" }}>
-          {activeTab === "tools" && (
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
-              gap: 6,
-            }}>
-              {tools.map(t => (
-                <div key={t.name} style={{
-                  display: "flex", alignItems: "center", gap: 10,
-                  padding: "10px 14px",
-                  background: "var(--bg-secondary)",
-                  border: "1px solid var(--border)",
-                  borderRadius: 8,
-                }}>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1, minWidth: 0 }}>
-                    <span style={{
-                      fontSize: 13, fontFamily: "monospace", fontWeight: 600,
-                      color: "var(--accent)",
-                    }}>
-                      {t.name}
-                    </span>
-                    {t.description && (
-                      <span style={{
-                        fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.4,
-                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                      }}>
-                        {t.description}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {activeTab === "sessions" && (
-            <div className="sessions-list">
-              {sessions.length === 0 ? (
-                <div className="inspector-empty">No sessions found</div>
-              ) : (
-                sessions.map(s => (
-                  <div key={s.id} className="session-row">
-                    <div className="session-info">
-                      <span className="session-name" style={{ color: "var(--text-primary)" }}>
-                        {s.model || "Chat"}
-                      </span>
-                      <span className="session-id">{s.id.slice(0, 8)}...</span>
-                    </div>
-                    <span className="session-time">
-                      {s.updated_at ? new Date(s.updated_at).toLocaleString() : "—"}
-                    </span>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
-        </div>
+      <div className="inspector-tabs">
+        <button className={`tab-btn ${activeTab === "tools" ? "active" : ""}`} onClick={() => setActiveTab("tools")}>
+          <Wrench size={14} /> Tools ({tools.length})
+        </button>
+        <button className={`tab-btn ${activeTab === "sessions" ? "active" : ""}`} onClick={() => setActiveTab("sessions")}>
+          <MessageSquare size={14} /> Sessions ({sessions.length})
+        </button>
       </div>
 
-      <div
-        onMouseDown={handleResizeStart}
-        style={{
-          flex: "0 0 4px",
-          background: "var(--border)",
-          cursor: "ns-resize",
-          transition: "background 0.15s",
-        }}
-        onMouseOver={e => (e.currentTarget.style.background = "var(--accent)")}
-        onMouseOut={e => (e.currentTarget.style.background = "var(--border)")}
-      />
-
-      <div style={{
-        flex: "0 0 auto",
-        height: logExpanded ? logPanelHeight : 32,
-        display: "flex",
-        flexDirection: "column",
-        background: "var(--bg-primary)",
-        borderTop: "1px solid var(--border)",
-        overflow: "hidden",
-      }}>
-        <div style={{
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "6px 16px",
-          background: "var(--bg-secondary)",
-          borderBottom: "1px solid var(--border)",
-          cursor: "pointer",
-          flexShrink: 0,
-        }} onClick={() => setLogExpanded(v => !v)}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <Monitor size={14} style={{ color: "var(--accent)" }} />
-            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>Live Logs</span>
-            <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>
-              {liveLogs.length} lines (max {MAX_LOG_LINES})
-            </span>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 10, color: "var(--text-secondary)" }}>
-              {logPanelHeight}px
-            </span>
-            {logExpanded ? <ChevronDown size={14} style={{ color: "var(--text-secondary)" }} /> : <ChevronUp size={14} style={{ color: "var(--text-secondary)" }} />}
-          </div>
-        </div>
-
-        {logExpanded && (
+      <div className="inspector-content" style={{ padding: "0 24px 24px" }}>
+        {activeTab === "tools" && (
           <div style={{
-            flex: 1, overflowY: "auto", overflowX: "hidden",
-            padding: "4px 0",
-            fontFamily: "monospace",
-            fontSize: 12,
+            display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 6,
           }}>
-            {liveLogs.length === 0 ? (
-              <div style={{
-                display: "flex", alignItems: "center", justifyContent: "center",
-                height: "100%", color: "var(--text-secondary)", fontSize: 13,
+            {tools.map(t => (
+              <div key={t.name} style={{
+                display: "flex", alignItems: "center", gap: 10,
+                padding: "10px 14px", background: "var(--bg-secondary)",
+                border: "1px solid var(--border)", borderRadius: 8,
               }}>
-                Waiting for logs...
-              </div>
-            ) : (
-              liveLogs.map((line, i) => {
-                const { level, message } = parseLine(line);
-                const colors = LEVEL_COLORS[level] || LEVEL_COLORS.info;
-                return (
-                  <div key={i} style={{
-                    display: "flex", alignItems: "flex-start", gap: 8,
-                    padding: "2px 16px",
-                    color: "var(--text-primary)",
-                    lineHeight: 1.5,
-                  }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1, minWidth: 0 }}>
+                  <span style={{ fontSize: 13, fontFamily: "monospace", fontWeight: 600, color: "var(--accent)" }}>
+                    {t.name}
+                  </span>
+                  {t.description && (
                     <span style={{
-                      display: "inline-block", width: 50, flexShrink: 0,
-                      fontSize: 10, fontWeight: 700, textTransform: "uppercase",
-                      padding: "0 4px", borderRadius: 2,
-                      background: colors.bg, color: colors.text,
-                      textAlign: "center",
-                      lineHeight: "18px",
+                      fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.4,
+                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                     }}>
-                      {level}
+                      {t.description}
                     </span>
-                    <span style={{ flex: 1, minWidth: 0, wordBreak: "break-all", color: "var(--text-secondary)" }}>
-                      {message}
-                    </span>
-                  </div>
-                );
-              })
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {activeTab === "sessions" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ display: "flex", gap: 8 }}>
+              <div style={{ flex: 1, position: "relative" }}>
+                <Search size={14} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--text-secondary)" }} />
+                <input
+                  placeholder="Search sessions..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && handleSearch()}
+                  style={{
+                    width: "100%", padding: "8px 10px 8px 30px", fontSize: 13,
+                    background: "var(--bg-secondary)", border: "1px solid var(--border)",
+                    borderRadius: 4, color: "var(--text-primary)", outline: "none",
+                  }}
+                />
+              </div>
+              <button onClick={handleSearch} disabled={searching} style={{
+                padding: "8px 16px", borderRadius: 4, background: "var(--accent)",
+                color: "#000", fontWeight: 600, border: "none", cursor: "pointer", fontSize: 13,
+              }}>
+                {searching ? "..." : "Search"}
+              </button>
+            </div>
+
+            {searchResults.length > 0 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                <span style={{ fontSize: 11, color: "var(--text-secondary)", fontWeight: 500 }}>
+                  Search results ({searchResults.length})
+                </span>
+                {searchResults.map(r => {
+                  const session = sessions.find(s => s.id === r.session_id);
+                  return (
+                    <div key={r.session_id} style={{
+                      padding: "8px 12px", background: "var(--bg-secondary)",
+                      border: "1px solid var(--border)", borderRadius: 4, cursor: "pointer",
+                    }} onClick={() => toggleSession(r.session_id)}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)" }}>
+                          {r.session_id.slice(0, 8)}...
+                        </span>
+                        <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>
+                          {r.model || session?.model || "unknown"}
+                        </span>
+                        {expandedSession === r.session_id
+                          ? <ChevronDown size={12} style={{ color: "var(--text-secondary)" }} />
+                          : <ChevronRight size={12} style={{ color: "var(--text-secondary)" }} />
+                        }
+                      </div>
+                      <p style={{ fontSize: 11, color: "var(--text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {r.snippet}
+                      </p>
+                      {expandedSession === r.session_id && (
+                        <div style={{ marginTop: 8 }}>
+                          {loadingMsgs ? <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>Loading messages...</span>
+                            : messages.map((m, i) => <MessageBubble key={i} msg={m} />)
+                          }
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             )}
-            <div ref={logEndRef} />
+
+            {searchResults.length === 0 && (
+              <div className="sessions-list">
+                {sessions.length === 0 ? (
+                  <div className="inspector-empty">No sessions found</div>
+                ) : (
+                  sessions.map(s => (
+                    <div key={s.id} style={{
+                      padding: "10px 12px", background: "var(--bg-secondary)",
+                      border: "1px solid var(--border)", borderRadius: 4, cursor: "pointer",
+                    }} onClick={() => toggleSession(s.id)}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          {expandedSession === s.id
+                            ? <ChevronDown size={14} style={{ color: "var(--text-secondary)" }} />
+                            : <ChevronRight size={14} style={{ color: "var(--text-secondary)" }} />
+                          }
+                          <span style={{ fontWeight: 600, fontSize: 13, color: "var(--text-primary)" }}>
+                            {s.model || "Chat"}
+                          </span>
+                          <span style={{ fontFamily: "monospace", fontSize: 11, color: "var(--text-secondary)" }}>
+                            {s.id.slice(0, 8)}...
+                          </span>
+                          {s.message_count != null && (
+                            <span style={{ fontSize: 10, color: "var(--text-secondary)" }}>
+                              {s.message_count} msgs
+                            </span>
+                          )}
+                        </div>
+                        <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>
+                          {s.updated_at ? new Date(s.updated_at).toLocaleString() : "—"}
+                        </span>
+                      </div>
+                      {expandedSession === s.id && (
+                        <div style={{ marginTop: 8, paddingLeft: 22 }}>
+                          {loadingMsgs ? <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>Loading messages...</span>
+                            : messages.length === 0 ? <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>No messages</span>
+                            : messages.map((m, i) => <MessageBubble key={i} msg={m} />)
+                          }
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>

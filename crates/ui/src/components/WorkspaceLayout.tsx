@@ -1,16 +1,20 @@
 import { Outlet, NavLink } from "react-router-dom";
-import { MessageSquare, FolderOpen, Terminal, Brain, Sparkles, Settings, LayoutDashboard, Menu, X, Activity } from "lucide-react";
+import { MessageSquare, FolderOpen, Terminal, Brain, Sparkles, Settings, LayoutDashboard, Menu, X, Activity, BarChart3, Clock, KeyRound } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { CommandPalette } from "./CommandPalette";
+import { LiveLogsPanel } from "./LiveLogsPanel";
 
 const NAV_ITEMS = [
   { path: "/chat", icon: MessageSquare, label: "Chat" },
   { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
+  { path: "/analytics", icon: BarChart3, label: "Analytics" },
+  { path: "/inspector", icon: Activity, label: "Inspector" },
   { path: "/files", icon: FolderOpen, label: "Files" },
   { path: "/terminal", icon: Terminal, label: "Terminal" },
   { path: "/memory", icon: Brain, label: "Memory" },
   { path: "/skills", icon: Sparkles, label: "Skills" },
-  { path: "/inspector", icon: Activity, label: "Inspector" },
+  { path: "/cron", icon: Clock, label: "Cron" },
+  { path: "/env", icon: KeyRound, label: "Env Vars" },
   { path: "/settings", icon: Settings, label: "Settings" },
 ];
 
@@ -45,7 +49,7 @@ export function WorkspaceLayout() {
         <aside className={`sidebar ${sidebarOpen ? "open" : "collapsed"}`}>
           <div className="sidebar-header">
             <div className="sidebar-title">
-              <span className="logo">☤</span>
+              <span className="logo"> ☤</span>
               {sidebarOpen && <span>Hermes</span>}
             </div>
             <button className="sidebar-toggle" onClick={() => setSidebarOpen(!sidebarOpen)}>
@@ -76,13 +80,16 @@ export function WorkspaceLayout() {
 
           {sidebarOpen && (
             <div className="sidebar-footer">
-              <div className="sidebar-version">v0.7.0</div>
+              <div className="sidebar-version">v0.6.3</div>
             </div>
           )}
         </aside>
 
-        <main className="workspace-main">
-          <Outlet />
+        <main className="workspace-main" style={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          <div style={{ flex: 1, overflow: "auto", minHeight: 0 }}>
+            <Outlet />
+          </div>
+          <LiveLogsPanel />
         </main>
       </div>
 

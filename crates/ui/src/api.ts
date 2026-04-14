@@ -498,3 +498,227 @@ export async function switchModel(model: string): Promise<SwitchModelResponse> {
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
+
+// ── Analytics ──
+
+export interface DailyUsage {
+  day: string;
+  input_tokens: number;
+  output_tokens: number;
+  cache_read_tokens: number;
+  reasoning_tokens: number;
+  estimated_cost: number;
+  actual_cost: number;
+  sessions: number;
+}
+
+export interface ModelUsage {
+  model: string;
+  input_tokens: number;
+  output_tokens: number;
+  estimated_cost: number;
+  sessions: number;
+}
+
+export interface AnalyticsTotals {
+  total_input: number;
+  total_output: number;
+  total_cache_read: number;
+  total_reasoning: number;
+  total_estimated_cost: number;
+  total_actual_cost: number;
+  total_sessions: number;
+}
+
+export interface AnalyticsResponse {
+  daily: DailyUsage[];
+  by_model: ModelUsage[];
+  totals: AnalyticsTotals;
+}
+
+export async function getAnalytics(days: number = 30): Promise<AnalyticsResponse> {
+  const res = await fetch(`${API_BASE}/api/analytics/usage?days=${days}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+// ── Status ──
+
+export interface PlatformStatus {
+  connected: boolean;
+  state: string;
+}
+
+export interface StatusResponse {
+  version: string;
+  hermes_home: string;
+  active_sessions: number;
+  gateway_running: boolean;
+  gateway_pid: number | null;
+  gateway_state: string | null;
+  gateway_platforms: Record<string, PlatformStatus>;
+  config_version: number;
+}
+
+export async function getStatus(): Promise<StatusResponse> {
+  const res = await fetch(`${API_BASE}/api/status`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+// ── Cron ──
+
+export interface CronSchedule {
+  kind: string;
+  expr: string;
+  display: string;
+}
+
+export interface CronJob {
+  id: string;
+  name: string | null;
+  prompt: string;
+  schedule: CronSchedule;
+  schedule_display: string;
+  enabled: boolean;
+  state: string;
+  deliver: string | null;
+  last_run_at: string | null;
+  next_run_at: string | null;
+  last_error: string | null;
+}
+
+export async function getCronJobs(): Promise<CronJob[]> {
+  const res = await fetch(`${API_BASE}/api/cron/jobs`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function createCronJob(req: { prompt: string; schedule: string; name?: string; deliver?: string }): Promise<CronJob> {
+  const res = await fetch(`${API_BASE}/api/cron/jobs`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(req),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function pauseCronJob(id: string): Promise<CronJob> {
+  const res = await fetch(`${API_BASE}/api/cron/jobs/${id}/pause`, { method: "POST" });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function resumeCronJob(id: string): Promise<CronJob> {
+  const res = await fetch(`${API_BASE}/api/cron/jobs/${id}/resume`, { method: "POST" });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function triggerCronJob(id: string): Promise<{ ok: boolean }> {
+  const res = await fetch(`${API_BASE}/api/cron/jobs/${id}/trigger`, { method: "POST" });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function deleteCronJob(id: string): Promise<{ ok: boolean }> {
+  const res = await fetch(`${API_BASE}/api/cron/jobs/${id}`, { method: "DELETE" });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+// ── Env Vars ──
+
+export interface EnvVarEntry {
+  key: string;
+  is_set: boolean;
+  redacted_value: string;
+  description: string | null;
+  url: string | null;
+  category: string | null;
+  is_password: boolean | null;
+}
+
+export async function getEnvVars(): Promise<EnvVarEntry[]> {
+  const res = await fetch(`${API_BASE}/api/env`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+  return data.vars || [];
+}
+
+export async function setEnvVar(key: string, value: string): Promise<{ ok: boolean }> {
+  const res = await fetch(`${API_BASE}/api/env`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ key, value }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function deleteEnvVar(key: string): Promise<{ ok: boolean }> {
+  const res = await fetch(`${API_BASE}/api/env`, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ key }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function revealEnvVar(key: string): Promise<{ key: string; value: string }> {
+  const tokenRes = await fetch(`${API_BASE}/api/auth/session-token`);
+  if (!tokenRes.ok) throw new Error(`HTTP ${tokenRes.status}`);
+  const { token } = await tokenRes.json();
+  const res = await fetch(`${API_BASE}/api/env/reveal`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ key, auth_token: token }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+// ── Session Search ──
+
+export interface SearchResult {
+  session_id: string;
+  created_at: string;
+  updated_at: string;
+  model: string | null;
+  snippet: string;
+}
+
+export async function searchSessions(query: string): Promise<SearchResult[]> {
+  const res = await fetch(`${API_BASE}/api/sessions/search?q=${encodeURIComponent(query)}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+  return data.results || [];
+}
+
+// ── Config Schema / Raw ──
+
+export async function getConfigSchema(): Promise<Record<string, { type: string; default: unknown; description: string }>> {
+  const res = await fetch(`${API_BASE}/api/config/schema`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+  return data.fields || {};
+}
+
+export async function getConfigRaw(): Promise<string> {
+  const res = await fetch(`${API_BASE}/api/config/raw`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+  return data.yaml || "";
+}
+
+export async function updateConfigRaw(yaml_text: string): Promise<{ ok: boolean }> {
+  const res = await fetch(`${API_BASE}/api/config/raw`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ yaml_text }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}

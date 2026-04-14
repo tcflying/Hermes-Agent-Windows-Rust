@@ -1,6 +1,6 @@
-import { MessageSquare, Zap, Activity, Users, Terminal, Clock, Wrench, Cpu } from "lucide-react";
+import { MessageSquare, Zap, Activity, Users, Terminal, Clock, Wrench, Cpu, Server, Wifi, WifiOff } from "lucide-react";
 import { useState, useEffect } from "react";
-import { listSessions, getConfig, healthCheck, SessionInfo } from "../api";
+import { listSessions, getConfig, healthCheck, SessionInfo, getStatus, StatusResponse } from "../api";
 
 interface HudStats {
   uptime_seconds: number;
@@ -33,9 +33,7 @@ function formatDate(iso: string): string {
     if (diffHours < 24) return `${diffHours}h ago`;
     const diffDays = Math.floor(diffHours / 24);
     return `${diffDays}d ago`;
-  } catch {
-    return "";
-  }
+  } catch { return ""; }
 }
 
 export function DashboardPage() {
@@ -47,6 +45,7 @@ export function DashboardPage() {
   const [model, setModel] = useState("MiniMax-M2.7-highspeed");
   const [backendUp, setBackendUp] = useState(false);
   const [hudStats, setHudStats] = useState<HudStats | null>(null);
+  const [statusData, setStatusData] = useState<StatusResponse | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -71,9 +70,13 @@ export function DashboardPage() {
   useEffect(() => {
     fetch("http://localhost:3848/api/hud/stats")
       .then(res => res.ok ? res.json() : null)
-      .then(data => {
-        if (data) setHudStats(data);
-      })
+      .then(data => { if (data) setHudStats(data); })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    getStatus()
+      .then(setStatusData)
       .catch(() => {});
   }, []);
 
@@ -84,35 +87,22 @@ export function DashboardPage() {
 
   return (
     <div className="page-container dashboard-page">
-      <div className="page-header">
-        <h1>Dashboard</h1>
-      </div>
+      <div className="page-header"><h1>Dashboard</h1></div>
 
       <div className="dashboard-grid">
         <div className="stat-card">
-          <div className="stat-icon">
-            <MessageSquare size={24} />
-          </div>
+          <div className="stat-icon"><Activity size={24} /></div>
           <div className="stat-info">
-            <div className="stat-value">{stats.totalSessions}</div>
-            <div className="stat-label">Total Sessions</div>
-          </div>
-        </div>
-
-        <div className="stat-card">
-          <div className="stat-icon">
-            <Activity size={24} />
-          </div>
-          <div className="stat-info">
-            <div className="stat-value">{backendUp ? "Online" : "Offline"}</div>
+            <div className="stat-value" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              {backendUp ? <Wifi size={16} style={{ color: "#10b981" }} /> : <WifiOff size={16} style={{ color: "#ef4444" }} />}
+              {backendUp ? "Online" : "Offline"}
+            </div>
             <div className="stat-label">Backend Status</div>
           </div>
         </div>
 
         <div className="stat-card">
-          <div className="stat-icon">
-            <Zap size={24} />
-          </div>
+          <div className="stat-icon"><Zap size={24} /></div>
           <div className="stat-info">
             <div className="stat-value">{activeModel.split("/").pop() || activeModel}</div>
             <div className="stat-label">Current Model</div>
@@ -120,19 +110,23 @@ export function DashboardPage() {
         </div>
 
         <div className="stat-card">
-          <div className="stat-icon">
-            <Terminal size={24} />
-          </div>
+          <div className="stat-icon"><Terminal size={24} /></div>
           <div className="stat-info">
-            <div className="stat-value">v0.6.1</div>
+            <div className="stat-value">v{statusData?.version || "0.6.3"}</div>
             <div className="stat-label">Hermes Version</div>
           </div>
         </div>
 
         <div className="stat-card">
-          <div className="stat-icon">
-            <Clock size={24} />
+          <div className="stat-icon"><Server size={24} /></div>
+          <div className="stat-info">
+            <div className="stat-value">{statusData?.gateway_pid ?? "—"}</div>
+            <div className="stat-label">Gateway PID</div>
           </div>
+        </div>
+
+        <div className="stat-card">
+          <div className="stat-icon"><Clock size={24} /></div>
           <div className="stat-info">
             <div className="stat-value">{uptime > 0 ? formatUptime(uptime) : "—"}</div>
             <div className="stat-label">Uptime</div>
@@ -140,9 +134,15 @@ export function DashboardPage() {
         </div>
 
         <div className="stat-card">
-          <div className="stat-icon">
-            <Wrench size={24} />
+          <div className="stat-icon"><MessageSquare size={24} /></div>
+          <div className="stat-info">
+            <div className="stat-value">{stats.totalSessions}</div>
+            <div className="stat-label">Total Sessions</div>
           </div>
+        </div>
+
+        <div className="stat-card">
+          <div className="stat-icon"><Wrench size={24} /></div>
           <div className="stat-info">
             <div className="stat-value">{totalSkills}</div>
             <div className="stat-label">Total Skills</div>
@@ -150,15 +150,39 @@ export function DashboardPage() {
         </div>
 
         <div className="stat-card">
-          <div className="stat-icon">
-            <Cpu size={24} />
-          </div>
+          <div className="stat-icon"><Cpu size={24} /></div>
           <div className="stat-info">
             <div className="stat-value">{totalMessages}</div>
             <div className="stat-label">Total Messages</div>
           </div>
         </div>
       </div>
+
+      {statusData && statusData.gateway_platforms && Object.keys(statusData.gateway_platforms).length > 0 && (
+        <div className="dashboard-section">
+          <h2>Platform Status</h2>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 8 }}>
+            {Object.entries(statusData.gateway_platforms).map(([name, ps]) => (
+              <div key={name} style={{
+                display: "flex", alignItems: "center", gap: 8,
+                padding: "8px 12px", background: "var(--bg-secondary)",
+                border: "1px solid var(--border)", borderRadius: 6,
+              }}>
+                {ps.connected ? <Wifi size={14} style={{ color: "#10b981" }} /> : <WifiOff size={14} style={{ color: "#ef4444" }} />}
+                <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text-primary)", textTransform: "capitalize" }}>{name}</span>
+                <span style={{
+                  fontSize: 10, fontWeight: 600, marginLeft: "auto",
+                  padding: "1px 6px", borderRadius: 3,
+                  background: ps.connected ? "rgba(16,185,129,0.15)" : "rgba(229,62,62,0.15)",
+                  color: ps.connected ? "#10b981" : "#ef4444",
+                }}>
+                  {ps.state}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {stats.recentSessions.length > 0 && (
         <div className="dashboard-section">

@@ -8,6 +8,9 @@ import { SkillsPage } from "./pages/SkillsPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { InspectorPage } from "./pages/InspectorPage";
+import { AnalyticsPage } from "./pages/AnalyticsPage";
+import { CronPage } from "./pages/CronPage";
+import { EnvPage } from "./pages/EnvPage";
 
 export default function App() {
   return (
@@ -16,13 +19,16 @@ export default function App() {
         <Route path="/" element={<WorkspaceLayout />}>
           <Route index element={<Navigate to="/chat" replace />} />
           <Route path="chat" element={<ChatPage />} />
+          <Route path="dashboard" element={<DashboardPage />} />
+          <Route path="analytics" element={<AnalyticsPage />} />
+          <Route path="inspector" element={<InspectorPage />} />
           <Route path="files" element={<FilesPage />} />
           <Route path="terminal" element={<TerminalPage />} />
           <Route path="memory" element={<MemoryPage />} />
           <Route path="skills" element={<SkillsPage />} />
+          <Route path="cron" element={<CronPage />} />
+          <Route path="env" element={<EnvPage />} />
           <Route path="settings" element={<SettingsPage />} />
-          <Route path="dashboard" element={<DashboardPage />} />
-          <Route path="inspector" element={<InspectorPage />} />
         </Route>
       </Routes>
     </BrowserRouter>
