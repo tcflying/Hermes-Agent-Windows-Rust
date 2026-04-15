@@ -45,7 +45,7 @@ pub struct ChatAgent {
     memory_manager: Arc<Mutex<MemoryManager>>,
     skill_manager: Arc<Mutex<SkillManager>>,
     system_prompt: String,
-    compressor: ContextCompressor,
+    compressor: Arc<Mutex<ContextCompressor>>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -131,7 +131,7 @@ impl ChatAgent {
             memory_manager: Arc::new(Mutex::new(manager)),
             skill_manager: Arc::new(Mutex::new(skill_mgr)),
             system_prompt: prompt,
-            compressor: ContextCompressor::new(),
+            compressor: Arc::new(Mutex::new(ContextCompressor::new())),
         }
     }
 
@@ -180,6 +180,23 @@ impl ChatAgent {
             }
 
             log_agent("", &format!("→ {} ({} msgs, streaming)", model.split('/').last().unwrap_or(model), all_messages.len()));
+
+            // Compression: check if context is getting large, compress if needed
+            const CONTEXT_LIMIT: usize = 180_000; // ~180k tokens, safe for most models
+            {
+                let mut comp = self.compressor.lock().await;
+                if comp.should_compress(&all_messages, CONTEXT_LIMIT) {
+                    let total_before: usize = all_messages.iter().map(|m| {
+                        m.content.as_ref().map(|c| c.len()).unwrap_or(0) / 4
+                    }).sum();
+                    let (compressed, ratio, saved) = comp.compress(&all_messages);
+                    let total_after: usize = compressed.iter().map(|m| {
+                        m.content.as_ref().map(|c| c.len()).unwrap_or(0) / 4
+                    }).sum();
+                    log_agent("", &format!("  Compressed: {} → {} tokens (saving {:.0}%, {} saved)", total_before, total_after, ratio * 100.0, saved));
+                    all_messages = compressed;
+                }
+            }
 
             let accumulated_content = std::sync::Mutex::new(String::new());
             let accumulated_tool_calls = std::sync::Mutex::new(Vec::<ToolCall>::new());

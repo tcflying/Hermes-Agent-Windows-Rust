@@ -29,3 +29,4 @@ regex = "1"
 dirs.workspace = true
 uuid = { version = "1", features = ["v4"] }
 lazy_static = "1"
+md5 = "0.7"
