@@ -52,6 +52,13 @@ pub fn execute_code(code: &str, language: &str, timeout_secs: u64) -> String {
             })
             .to_string()
         }
+        Err(ref e) if e.contains("timed out") => serde_json::json!({
+            "stdout": e,
+            "stderr": "",
+            "exit_code": -1,
+            "error": e,
+        })
+        .to_string(),
         Err(e) => serde_json::json!({
             "stdout": "",
             "stderr": "",

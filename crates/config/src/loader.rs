@@ -215,9 +215,22 @@ impl ConfigLoader {
         self.path = Some(path.clone());
         if path.exists() {
             let content = std::fs::read_to_string(path)?;
-            self.config = serde_yaml::from_str(&content).unwrap_or_default();
+            self.config = Self::parse_config_yaml(&content).unwrap_or_default();
         }
         Ok(())
+    }
+
+    fn parse_config_yaml(content: &str) -> Result<Config> {
+        let value: serde_yaml::Value = serde_yaml::from_str(content)?;
+        let mut clean: serde_yaml::Mapping = serde_yaml::Mapping::new();
+        if let serde_yaml::Value::Mapping(map) = &value {
+            for (k, v) in map {
+                if !v.is_null() {
+                    clean.insert(k.clone(), v.clone());
+                }
+            }
+        }
+        serde_yaml::from_value(serde_yaml::Value::Mapping(clean)).map_err(Into::into)
     }
 
     pub fn get(&self) -> &Config {

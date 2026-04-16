@@ -110,11 +110,20 @@ impl ContextCompressor {
 
         let mut result: Vec<Message> = messages.iter().take(self.protect_head).cloned().collect();
 
-        let middle_start = self.protect_head;
-        let middle_end = messages.len().saturating_sub(self.protect_tail);
+        let last_user_idx = messages
+            .iter()
+            .enumerate()
+            .rev()
+            .find(|(_, m)| m.role == "user")
+            .map(|(i, _)| i);
 
-        if middle_end > middle_start {
-            let middle = &messages[middle_start..middle_end];
+        let middle_start = self.protect_head;
+        let protected_tail_start = last_user_idx
+            .map(|i| i.max(messages.len().saturating_sub(self.protect_tail)))
+            .unwrap_or(messages.len().saturating_sub(self.protect_tail));
+
+        if protected_tail_start > middle_start {
+            let middle = &messages[middle_start..protected_tail_start];
             let middle_tokens: usize = middle.iter().map(|m| message_tokens(m)).sum();
             let middle_target = (target_tokens as f32 * 0.5) as usize;
 
@@ -131,10 +140,7 @@ impl ContextCompressor {
             }
         }
 
-        for msg in messages
-            .iter()
-            .skip(messages.len().saturating_sub(self.protect_tail))
-        {
+        for msg in messages.iter().skip(protected_tail_start) {
             result.push(msg.clone());
         }
 
